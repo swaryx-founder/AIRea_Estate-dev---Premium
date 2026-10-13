@@ -1,0 +1,23 @@
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+*.pyo
+*.db
+*.sqlite
+*.log
+venv/
+.venv/
+node_modules/
+*.egg-info/
+dist/
+build/
+.DS_Store
+.git/
+LIvekitAIVoice/
+.gitignore
+
+# Local runtime state and call review artifacts
+.runtime/
+runtime/

@@ -1,0 +1,24 @@
+---
+description: Hang up SIP before call-completed webhook (anti mid-call redial)
+alwaysApply: true
+---
+
+# Hangup-before-webhook (disconnect / redial race)
+
+## Bug
+CRM shows `disconnect_in_between` while the lead still hears the call, then Node places another outbound dial to the same number.
+
+## Cause
+AI used to `finalize_call` (webhook to Node) **before** SIP/`delete_room` hangup. Node treated the line as free and redialed. Room-level `disconnected` could also false-trigger mid-call. Fixed delays (1–5s) after hangup are not confirmation.
+
+## Fix (AI) — required invariant
+1. Tear down SIP/room first (`_hangup_call` → `delete_room` / `remove_participant`).
+2. **Confirm** SIP absent via LiveKit server-side `list_participants` (or room not found). See `sip_hangup.py`.
+3. Only then `finalize_call` / `log_call` (webhook + DID release).
+4. If hangup/confirm fails or state is unknown: **do not** finalize, release DID, webhook, or advance the campaign queue.
+5. Prefer SIP `participant_disconnected`; ignore room `disconnected` while SIP identity still present (fail-closed on local-cache errors).
+6. Stale reconcile must not unlock talking `in_progress` calls without LiveKit confirmation.
+7. Call timestamps are UTC; naive legacy timestamps are treated as UTC.
+
+## Node (recommended)
+Do not auto-redial `disconnect_in_between` immediately; wait for line free / cooldown.

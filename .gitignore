@@ -1,0 +1,30 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+*.db
+*.sqlite
+*.log
+venv/
+.venv/
+node_modules/
+*.egg-info/
+dist/
+build/
+.DS_Store
+LIvekitAIVoice/
+
+# Terraform (keep *.tfvars.example; never commit secrets)
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+**/crash.log
+**/override.tf
+**/terraform.tfvars
+**/*.tfplan
+.pytest_cache/
+# Per-machine dashboard voice settings and latency logs
+runtime/
+
+# Local runtime state and call review artifacts
+.runtime/

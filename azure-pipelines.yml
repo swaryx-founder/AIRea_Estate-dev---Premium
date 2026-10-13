@@ -1,0 +1,487 @@
+# ==============================================================================
+# Azure DevOps CI/CD — Swaryx Real Estate (Outbound AI)
+# ==============================================================================
+
+trigger:
+  - main
+
+variables:
+  - group: Swaryx-realestate
+
+  - name: IMAGE_TAG
+    value: $(Build.BuildId)
+
+  - name: ACR_NAME
+    value: swaryxacrdevlab
+
+  - name: ACR_LOGIN_SERVER
+    value: swaryxacrdevlab.azurecr.io
+
+  - name: IMAGE_NAME
+    value: outboundai
+
+  # Dev Environment
+  - name: AZURE_SERVICE_CONNECTION
+    value: azure-swaryx-dev-uat
+
+  - name: RESOURCE_GROUP
+    value: rg-swaryx-dev-lab
+
+  - name: APP_NAME
+    value: realestate-dev-lab
+
+  - name: APP_PORT
+    value: "8000"
+
+  # UAT Environment
+  - name: UAT_SERVICE_CONNECTION
+    value: azure-swaryx-dev-uat
+
+  - name: UAT_RG
+    value: rg-swaryx-uat-lab
+
+  - name: UAT_APP
+    value: realestate-uat-lab
+
+  # Production Environment
+  - name: PROD_SERVICE_CONNECTION
+    value: azure-swaryx-prod
+
+  - name: PROD_RG
+    value: rg-swaryx-prod
+
+  - name: PROD_APP
+    value: swaryx-realestate
+
+  - name: PROD_ACR_NAME
+    value: swaryxacrprod
+
+  - name: PROD_ACR_SERVER
+    value: swaryxacrprod.azurecr.io
+
+stages:
+
+# ==============================================================================
+# STAGE 1: BUILD & PUSH
+# ==============================================================================
+- stage: Build
+  displayName: "1. Build & Push"
+  jobs:
+    - job: BuildPush
+      displayName: Build and push outboundai to swaryxacrdevlab
+      pool:
+        vmImage: ubuntu-latest
+      steps:
+        - checkout: self
+          fetchDepth: 0
+
+        - script: docker --version
+          displayName: Verify Docker
+
+        - task: AzureCLI@2
+          name: BuildPushStep
+          displayName: Build & push to swaryxacrdevlab
+          inputs:
+            azureSubscription: $(AZURE_SERVICE_CONNECTION)
+            scriptType: bash
+            scriptLocation: inlineScript
+            inlineScript: |
+              set -e
+              TAG="$(IMAGE_TAG)"; NAME="$(IMAGE_NAME)"; IMAGE="$(ACR_LOGIN_SERVER)/$NAME:$TAG"
+
+              if ! az acr login --name $(ACR_NAME); then
+                ACR_USER=$(az acr credential show --name $(ACR_NAME) --query username -o tsv)
+                ACR_PASS=$(az acr credential show --name $(ACR_NAME) --query "passwords[0].value" -o tsv)
+                echo "$ACR_PASS" | docker login $(ACR_LOGIN_SERVER) -u "$ACR_USER" --password-stdin
+              fi
+
+              docker build --pull --no-cache -f Dockerfile -t "$IMAGE" -t "$(ACR_LOGIN_SERVER)/$NAME:latest" .
+              docker push "$IMAGE"
+              docker push "$(ACR_LOGIN_SERVER)/$NAME:latest"
+              echo "##vso[task.setvariable variable=imageTag;isOutput=true]$TAG"
+
+              echo "=========================================================="
+              echo "✅ GOLDEN ARTIFACT BUILT & PUSHED"
+              echo "Registry:     $(ACR_LOGIN_SERVER)"
+              echo "Image Tag:    $TAG"
+              echo "Full Image:   $IMAGE"
+              echo "=========================================================="
+
+# ==============================================================================
+# STAGE 2: RUN CI TESTS
+# ==============================================================================
+- stage: Test
+  displayName: "2. Run Tests"
+  dependsOn: Build
+  condition: succeeded()
+  jobs:
+    - job: TestJob
+      displayName: Run Python CI tests
+      pool:
+        vmImage: ubuntu-latest
+      steps:
+        - checkout: self
+        - script: |
+            set -e
+            python3 --version
+            python3 -m pip install --upgrade pip
+            pip install -r requirements.txt
+            python3 scripts/test_call_webhook.py
+            python3 scripts/test_billing.py
+            python3 scripts/ci_smoke_test.py
+            python3 scripts/test_callback_schedule.py
+            python3 scripts/test_atomic_booking.py
+            python3 -m compileall -q config.py server.py agent.py agent_runtime.py agent_context.py db.py billing.py vobiz_api.py call_webhook.py tools.py
+          displayName: Run CI test suite
+
+# ==============================================================================
+# STAGE 3: DEPLOY DEV
+# ==============================================================================
+- stage: DeployDev
+  displayName: "3. Deploy Dev"
+  dependsOn: [Build, Test]
+  condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+  variables:
+    imageTag: $[ stageDependencies.Build.BuildPush.outputs['BuildPushStep.imageTag'] ]
+  jobs:
+    - job: DeployDevApp
+      displayName: Deploy realestate-dev-lab (Dev)
+      pool:
+        vmImage: ubuntu-latest
+      steps:
+        - checkout: self
+
+        - script: |
+            TAG="$(imageTag)"; [ -z "$TAG" ] && TAG="$(IMAGE_TAG)"
+            DEV_IMAGE="$(ACR_LOGIN_SERVER)/$(IMAGE_NAME):$TAG"
+            echo "=========================================================="
+            echo "🚀 [DEV] IMAGE GOING LIVE"
+            echo "----------------------------------------------------------"
+            echo "Target Env:      DEV (Subscription B)"
+            echo "Container App:   $(APP_NAME)"
+            echo "Resource Group:  $(RESOURCE_GROUP)"
+            echo "Target Port:     $(APP_PORT)"
+            echo "Image Tag:       $TAG"
+            echo "Live Image URI:  $DEV_IMAGE"
+            echo "=========================================================="
+
+            cat <<EOF > $(Pipeline.Workspace)/dev-summary.md
+            ### 🟢 Dev Deployment Summary
+            - **App Name:** \`$(APP_NAME)\`
+            - **Resource Group:** \`$(RESOURCE_GROUP)\`
+            - **Live Docker Image:** \`$DEV_IMAGE\`
+            - **Tag:** \`$TAG\`
+            EOF
+            echo "##vso[task.uploadsummary]$(Pipeline.Workspace)/dev-summary.md"
+          displayName: "📢 1. Display Image Going Live in Dev"
+
+        - task: AzureCLI@2
+          displayName: "🚀 2. Deploy to $(APP_NAME)"
+          inputs:
+            azureSubscription: $(AZURE_SERVICE_CONNECTION)
+            scriptType: bash
+            scriptLocation: inlineScript
+            inlineScript: |
+              set -e
+              RG="$(RESOURCE_GROUP)"; TAG="$(imageTag)"; [ -z "$TAG" ] && TAG="$(IMAGE_TAG)"
+              APP="$(APP_NAME)"; IMAGE="$(ACR_LOGIN_SERVER)/$(IMAGE_NAME):$TAG"
+
+              echo "Updating Container App $APP with image $IMAGE..."
+              az containerapp update --name "$APP" --resource-group "$RG" --image "$IMAGE"
+
+              TIMEOUT_SECONDS=180; ELAPSED=0; INTERVAL=10; HEALTHY=false
+              while [ $ELAPSED -lt $TIMEOUT_SECONDS ]; do
+                REV_STATUS=$(az containerapp revision list --name "$APP" --resource-group "$RG" \
+                  --query "[?properties.active && contains(properties.template.containers[0].image, '$TAG')].properties.runningState" -o tsv | head -n 1)
+
+                echo "⏳ Revision runningState: [$REV_STATUS] (${ELAPSED}s elapsed)"
+
+                if [ "$REV_STATUS" = "Running" ] || [ "$REV_STATUS" = "RunningAtMaxScale" ]; then
+                  echo "✅ Revision is healthy and active ($REV_STATUS)."
+                  HEALTHY=true
+                  break
+                fi
+
+                if [ "$REV_STATUS" = "Failed" ] || [ "$REV_STATUS" = "Degraded" ]; then
+                  echo "❌ Revision entered failure state: $REV_STATUS"
+                  exit 1
+                fi
+
+                sleep $INTERVAL; ELAPSED=$((ELAPSED + INTERVAL))
+              done
+
+              [ "$HEALTHY" != "true" ] && echo "❌ Timed out waiting for revision to become ready." && exit 1
+
+              FQDN=$(az containerapp show --name "$APP" --resource-group "$RG" --query "properties.configuration.ingress.fqdn" -o tsv)
+              if [ -n "$FQDN" ]; then
+                echo "Probing health endpoint: https://$FQDN/api/health"
+                for attempt in $(seq 1 12); do
+                  if curl --fail --silent --max-time 15 "https://$FQDN/api/health"; then
+                    echo "✅ Health probe successful on attempt $attempt."
+                    break
+                  fi
+                  sleep 10
+                done
+              fi
+
+# ==============================================================================
+# STAGE 4: PROMOTE TO UAT (Approval Gate)
+# ==============================================================================
+- stage: PromoteUAT
+  displayName: "4. Promote to UAT (Approval Gate)"
+  dependsOn: [Build, Test, DeployDev]
+  condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+  variables:
+    imageTag: $[ stageDependencies.Build.BuildPush.outputs['BuildPushStep.imageTag'] ]
+  jobs:
+    - deployment: DeployUATApp
+      displayName: Promote image to realestate-uat-lab (UAT)
+      pool:
+        vmImage: ubuntu-latest
+      environment: "Dev-to-uat-realestate"
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+              - checkout: self
+
+              - script: |
+                  TAG="$(imageTag)"; [ -z "$TAG" ] && TAG="$(IMAGE_TAG)"
+                  UAT_IMAGE="$(ACR_LOGIN_SERVER)/$(IMAGE_NAME):$TAG"
+                  echo "=========================================================="
+                  echo "🟡 [UAT] IMAGE GOING LIVE"
+                  echo "----------------------------------------------------------"
+                  echo "Target Env:      UAT (Subscription B)"
+                  echo "Container App:   $(UAT_APP)"
+                  echo "Resource Group:  $(UAT_RG)"
+                  echo "Image Tag:       $TAG"
+                  echo "Live Image URI:  $UAT_IMAGE"
+                  echo "=========================================================="
+
+                  cat <<EOF > $(Pipeline.Workspace)/uat-summary.md
+                  ### 🟡 UAT Deployment Summary
+                  - **App Name:** \`$(UAT_APP)\`
+                  - **Resource Group:** \`$(UAT_RG)\`
+                  - **Live Docker Image:** \`$UAT_IMAGE\`
+                  - **Tag:** \`$TAG\`
+                  EOF
+                  echo "##vso[task.uploadsummary]$(Pipeline.Workspace)/uat-summary.md"
+                displayName: "📢 1. Display Image Going Live in UAT"
+
+              - task: AzureCLI@2
+                displayName: "🚀 2. Deploy Golden Image to $(UAT_APP)"
+                inputs:
+                  azureSubscription: $(UAT_SERVICE_CONNECTION)
+                  scriptType: bash
+                  scriptLocation: inlineScript
+                  inlineScript: |
+                    set -e
+                    TAG="$(imageTag)"; [ -z "$TAG" ] && TAG="$(IMAGE_TAG)"
+                    UAT_IMAGE="$(ACR_LOGIN_SERVER)/$(IMAGE_NAME):$TAG"
+
+                    echo "Updating Container App $(UAT_APP) with image $UAT_IMAGE..."
+                    az containerapp update --name "$(UAT_APP)" --resource-group "$(UAT_RG)" --image "$UAT_IMAGE"
+
+                    TIMEOUT_SECONDS=180; ELAPSED=0; INTERVAL=10; HEALTHY=false
+                    while [ $ELAPSED -lt $TIMEOUT_SECONDS ]; do
+                      REV_STATUS=$(az containerapp revision list --name "$(UAT_APP)" --resource-group "$(UAT_RG)" \
+                        --query "[?properties.active && contains(properties.template.containers[0].image, '$TAG')].properties.runningState" -o tsv | head -n 1)
+
+                      echo "⏳ Revision runningState: [$REV_STATUS] (${ELAPSED}s elapsed)"
+
+                      if [ "$REV_STATUS" = "Running" ] || [ "$REV_STATUS" = "RunningAtMaxScale" ]; then
+                        echo "✅ Revision is healthy and active ($REV_STATUS)."
+                        HEALTHY=true
+                        break
+                      fi
+
+                      if [ "$REV_STATUS" = "Failed" ] || [ "$REV_STATUS" = "Degraded" ]; then
+                        echo "❌ Revision entered failure state: $REV_STATUS"
+                        exit 1
+                      fi
+
+                      sleep $INTERVAL; ELAPSED=$((ELAPSED + INTERVAL))
+                    done
+
+                    [ "$HEALTHY" != "true" ] && echo "❌ Timed out waiting for revision to become ready." && exit 1
+
+                    UAT_FQDN=$(az containerapp show --name "$(UAT_APP)" --resource-group "$(UAT_RG)" --query "properties.configuration.ingress.fqdn" -o tsv)
+                    if [ -n "$UAT_FQDN" ]; then
+                      echo "Probing health endpoint: https://$UAT_FQDN/api/health"
+                      for attempt in $(seq 1 12); do
+                        if curl --fail --silent --max-time 15 "https://$UAT_FQDN/api/health"; then
+                          echo "✅ Health probe successful on attempt $attempt."
+                          break
+                        fi
+                        sleep 10
+                      done
+                    fi
+
+# ==============================================================================
+# STAGE 5: IMPORT TO PROD ACR (Approval Gate)
+# ==============================================================================
+- stage: ImportToProdACR
+  displayName: "5. Import to Prod ACR (Approval Gate)"
+  dependsOn: [Build, Test, PromoteUAT]
+  condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+  variables:
+    imageTag: $[ stageDependencies.Build.BuildPush.outputs['BuildPushStep.imageTag'] ]
+  jobs:
+    - deployment: ImportImageJob
+      displayName: Import Golden Image from Dev ACR to Prod ACR
+      pool:
+        vmImage: ubuntu-latest
+      environment: "swaryx-production-AI"
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+              - checkout: self
+
+              - script: |
+                  TAG="$(imageTag)"; [ -z "$TAG" ] && TAG="$(IMAGE_TAG)"
+                  SOURCE_IMG="$(ACR_LOGIN_SERVER)/$(IMAGE_NAME):$TAG"
+                  TARGET_IMG="$(PROD_ACR_SERVER)/$(IMAGE_NAME):$TAG"
+                  echo "=========================================================="
+                  echo "🔄 [ACR IMPORT] IMAGE BEING IMPORTED"
+                  echo "----------------------------------------------------------"
+                  echo "Source ACR:         $(ACR_LOGIN_SERVER)"
+                  echo "Source Full Image:  $SOURCE_IMG"
+                  echo "Target ACR:         $(PROD_ACR_SERVER)"
+                  echo "Target Full Image:  $TARGET_IMG"
+                  echo "Image Tag:          $TAG"
+                  echo "=========================================================="
+
+                  cat <<EOF > $(Pipeline.Workspace)/import-summary.md
+                  ### 🔄 Prod ACR Import Summary
+                  - **Source Image (Dev ACR):** \`$SOURCE_IMG\`
+                  - **Target Image (Prod ACR):** \`$TARGET_IMG\`
+                  - **Tag:** \`$TAG\`
+                  EOF
+                  echo "##vso[task.uploadsummary]$(Pipeline.Workspace)/import-summary.md"
+                displayName: "📢 1. Display Image Being Imported to Prod ACR"
+
+              - task: AzureCLI@2
+                displayName: "🔑 2. Fetch Dev ACR Credentials"
+                inputs:
+                  azureSubscription: $(AZURE_SERVICE_CONNECTION)
+                  scriptType: bash
+                  scriptLocation: inlineScript
+                  inlineScript: |
+                    set -e
+                    DEV_USER=$(az acr credential show --name "$(ACR_NAME)" --query username -o tsv 2>/dev/null || true)
+                    DEV_PASS=$(az acr credential show --name "$(ACR_NAME)" --query "passwords[0].value" -o tsv 2>/dev/null || true)
+                    if [ -z "$DEV_USER" ] || [ -z "$DEV_PASS" ]; then
+                      DEV_USER="00000000-0000-0000-0000-000000000000"
+                      DEV_PASS=$(az acr login --name "$(ACR_NAME)" --expose-token --output tsv --query accessToken)
+                    fi
+                    echo "##vso[task.setvariable variable=DEV_SOURCE_USER]$DEV_USER"
+                    echo "##vso[task.setvariable variable=DEV_SOURCE_PASS;issecret=true]$DEV_PASS"
+
+              - task: AzureCLI@2
+                displayName: "📥 3. ACR Import to $(PROD_ACR_NAME)"
+                env:
+                  DEV_PASS: $(DEV_SOURCE_PASS)
+                inputs:
+                  azureSubscription: $(PROD_SERVICE_CONNECTION)
+                  scriptType: bash
+                  scriptLocation: inlineScript
+                  inlineScript: |
+                    set -e
+                    TAG="$(imageTag)"; [ -z "$TAG" ] && TAG="$(IMAGE_TAG)"
+                    az acr import --name "$(PROD_ACR_NAME)" \
+                      --source "$(ACR_LOGIN_SERVER)/$(IMAGE_NAME):$TAG" \
+                      --image "$(IMAGE_NAME):$TAG" \
+                      --resource-group "$(PROD_RG)" \
+                      --username "$(DEV_SOURCE_USER)" \
+                      --password "$DEV_PASS" --force
+
+# ==============================================================================
+# STAGE 6: DEPLOY PRODUCTION
+# ==============================================================================
+- stage: DeployProduction
+  displayName: "6. Deploy Production"
+  dependsOn: [Build, Test, ImportToProdACR]
+  condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+  variables:
+    imageTag: $[ stageDependencies.Build.BuildPush.outputs['BuildPushStep.imageTag'] ]
+  jobs:
+    - job: DeployProductionApp
+      displayName: Deploy to swaryx-realestate (Prod)
+      pool:
+        vmImage: ubuntu-latest
+      steps:
+        - checkout: self
+
+        - script: |
+            TAG="$(imageTag)"; [ -z "$TAG" ] && TAG="$(IMAGE_TAG)"
+            PROD_TARGET_IMAGE="$(PROD_ACR_SERVER)/$(IMAGE_NAME):$TAG"
+            echo "=========================================================="
+            echo "🔴 [PROD] IMAGE GOING LIVE"
+            echo "----------------------------------------------------------"
+            echo "Target Env:      PRODUCTION (Subscription A)"
+            echo "Container App:   $(PROD_APP)"
+            echo "Resource Group:  $(PROD_RG)"
+            echo "Image Tag:       $TAG"
+            echo "Live Image URI:  $PROD_TARGET_IMAGE"
+            echo "=========================================================="
+
+            cat <<EOF > $(Pipeline.Workspace)/prod-summary.md
+            ### 🔴 Production Deployment Summary
+            - **App Name:** \`$(PROD_APP)\`
+            - **Resource Group:** \`$(PROD_RG)\`
+            - **Live Docker Image:** \`$PROD_TARGET_IMAGE\`
+            - **Tag:** \`$TAG\`
+            EOF
+            echo "##vso[task.uploadsummary]$(Pipeline.Workspace)/prod-summary.md"
+          displayName: "📢 1. Display Image Going Live in Production"
+
+        - task: AzureCLI@2
+          displayName: "🚀 2. Deploy to $(PROD_APP)"
+          inputs:
+            azureSubscription: $(PROD_SERVICE_CONNECTION)
+            scriptType: bash
+            scriptLocation: inlineScript
+            inlineScript: |
+              set -e
+              TAG="$(imageTag)"; [ -z "$TAG" ] && TAG="$(IMAGE_TAG)"
+              PROD_TARGET_IMAGE="$(PROD_ACR_SERVER)/$(IMAGE_NAME):$TAG"
+
+              echo "Updating Container App $(PROD_APP) with image $PROD_TARGET_IMAGE..."
+              az containerapp update --name "$(PROD_APP)" --resource-group "$(PROD_RG)" --image "$PROD_TARGET_IMAGE"
+
+              TIMEOUT_SECONDS=180; ELAPSED=0; INTERVAL=10; HEALTHY=false
+              while [ $ELAPSED -lt $TIMEOUT_SECONDS ]; do
+                REV_STATUS=$(az containerapp revision list --name "$(PROD_APP)" --resource-group "$(PROD_RG)" \
+                  --query "[?properties.active && contains(properties.template.containers[0].image, '$TAG')].properties.runningState" -o tsv | head -n 1)
+
+                echo "⏳ Revision runningState: [$REV_STATUS] (${ELAPSED}s elapsed)"
+
+                if [ "$REV_STATUS" = "Running" ] || [ "$REV_STATUS" = "RunningAtMaxScale" ]; then
+                  echo "✅ Revision is healthy and active ($REV_STATUS)."
+                  HEALTHY=true
+                  break
+                fi
+
+                if [ "$REV_STATUS" = "Failed" ] || [ "$REV_STATUS" = "Degraded" ]; then
+                  echo "❌ Revision entered failure state: $REV_STATUS"
+                  exit 1
+                fi
+
+                sleep $INTERVAL; ELAPSED=$((ELAPSED + INTERVAL))
+              done
+
+              [ "$HEALTHY" != "true" ] && echo "❌ Timed out waiting for revision to become ready." && exit 1
+
+              PROD_FQDN=$(az containerapp show --name "$(PROD_APP)" --resource-group "$(PROD_RG)" --query "properties.configuration.ingress.fqdn" -o tsv)
+              if [ -n "$PROD_FQDN" ]; then
+                echo "Probing health endpoint: https://$PROD_FQDN/api/health"
+                for attempt in $(seq 1 12); do
+                  if curl --fail --silent --max-time 15 "https://$PROD_FQDN/api/health"; then
+                    echo "✅ Health probe successful on attempt $attempt."
+                    break
+                  fi
+                  sleep 10
+                done
+              fi
+              

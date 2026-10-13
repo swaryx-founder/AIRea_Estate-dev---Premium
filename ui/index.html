@@ -1,0 +1,2743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OutboundAI — Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0d0d;--card:#161616;--border:#252525;
+  --accent:#00ff88;--accent2:#00ccff;--danger:#ff4d4d;--warn:#ffaa00;
+  --muted:#5a5a5a;--text:#e0e0e0;--text2:#aaa;
+  --mono:'Courier New',monospace;--sans:'Segoe UI',system-ui,sans-serif;--r:8px;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;line-height:1.5;font-size:14px}
+header{background:var(--card);border-bottom:1px solid var(--border);padding:12px 20px;position:sticky;top:0;z-index:100}
+header h1{font-size:18px;font-weight:700;color:var(--accent);margin-bottom:10px}
+nav{display:flex;flex-wrap:wrap;gap:4px}
+nav button{background:transparent;border:1px solid transparent;color:var(--text2);padding:6px 10px;border-radius:var(--r);cursor:pointer;font-size:12px;transition:.15s}
+nav button:hover{color:var(--text);border-color:var(--border)}
+nav button.active{background:var(--border);color:var(--accent);border-color:var(--accent)}
+.tenant-bar{background:#121a14;border-bottom:1px solid rgba(0,255,136,.25);padding:10px 20px;position:sticky;top:58px;z-index:99}
+.tenant-bar-inner{max-width:1400px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px}
+.tenant-bar-title{font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;padding-bottom:8px}
+.tenant-field{min-width:180px;flex:1;max-width:260px}
+.tenant-hint{font-size:11px;color:var(--muted);padding-bottom:8px}
+main{padding:20px;max-width:1400px;margin:0 auto}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px}
+.card h2{font-size:15px;margin-bottom:12px;color:var(--accent2)}
+.grid{display:grid;gap:12px}
+.grid-2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.grid-3{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.grid-5{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+.kpi{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:14px;text-align:center}
+.kpi .val{font-size:24px;font-weight:700;color:var(--accent);font-family:var(--mono)}
+.kpi .lbl{font-size:11px;color:var(--text2);margin-top:4px;text-transform:uppercase}
+.chip{display:inline-block;background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:11px;margin:2px}
+.chip.ok{border-color:var(--accent);color:var(--accent)}
+.chip.no{border-color:var(--muted);color:var(--muted)}
+.project-panel{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:12px}
+.project-row{border:1px solid var(--border);border-radius:var(--r);padding:10px;margin-bottom:8px;background:#111}
+.contact-box{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:12px}
+.contact-box h4{font-size:12px;color:var(--accent2);margin-bottom:10px;font-weight:600}
+.contact-box.optional{border-style:dashed}
+.contact-box .hint{font-size:11px;color:var(--muted);font-weight:400}
+.project-mode{display:flex;flex-wrap:wrap;gap:16px;margin-bottom:10px}
+.project-mode label{font-size:12px;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:6px;margin:0}
+.project-hint{font-size:11px;color:var(--muted);margin-top:4px}
+.project-badge{display:inline-block;font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(99,102,241,.2);color:var(--accent);margin-right:4px}
+label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
+input,select,textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;color:var(--text);font-size:13px;font-family:inherit}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
+textarea{resize:vertical;min-height:80px;font-family:var(--mono);font-size:12px}
+.form-row{margin-bottom:12px}
+.form-row.inline{display:flex;align-items:center;gap:8px}
+.form-row.inline label{margin:0}
+.btn{background:var(--accent);color:#000;border:none;border-radius:var(--r);padding:8px 16px;font-weight:600;cursor:pointer;font-size:13px;transition:.15s}
+.btn:hover{opacity:.85}
+.btn.secondary{background:var(--border);color:var(--text)}
+.btn.danger{background:var(--danger);color:#fff}
+.btn.sm{padding:4px 10px;font-size:11px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--border)}
+th{color:var(--text2);font-weight:600;font-size:11px;text-transform:uppercase}
+tr:hover td{background:rgba(255,255,255,.02)}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;text-transform:uppercase}
+.badge.booked{background:rgba(0,255,136,.15);color:var(--accent)}
+.badge.not_interested,.badge.wrong_number{background:rgba(255,77,77,.15);color:var(--danger)}
+.badge.voicemail,.badge.no_answer,.badge.callback_requested,.badge.busy,.badge.disconnect_in_between{background:rgba(255,170,0,.15);color:var(--warn)}
+.badge.queued{background:rgba(136,136,136,.2);color:var(--muted)}
+.badge.unknown,.badge.active{background:rgba(0,204,255,.15);color:var(--accent2)}
+.badge.ringing{background:rgba(255,170,0,.2);color:var(--warn)}
+.badge.in_progress{background:rgba(0,204,255,.18);color:var(--accent2)}
+.badge.completed,.badge.paused{background:rgba(90,90,90,.3);color:var(--text2)}
+.badge.dispatched,.badge.queued{background:rgba(255,170,0,.12);color:var(--warn)}
+.badge.free{background:rgba(0,255,136,.15);color:var(--accent)}
+.badge.busy{background:rgba(255,170,0,.2);color:var(--warn)}
+.badge.disabled{background:rgba(90,90,90,.3);color:var(--text2)}
+.chart-wrap{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:12px;height:260px;position:relative}
+.chart-wrap canvas{max-height:230px}
+.progress{background:var(--bg);border-radius:var(--r);height:8px;overflow:hidden;margin:8px 0}
+.progress-bar{height:100%;background:var(--accent);transition:width .3s;width:0}
+.live-call-layout{display:grid;grid-template-columns:1fr 380px;gap:16px;align-items:start}
+@media(max-width:960px){.live-call-layout{grid-template-columns:1fr}}
+.live-transcript-panel{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:12px;min-height:420px;max-height:70vh;display:flex;flex-direction:column}
+.live-transcript-panel h3{font-size:13px;color:var(--accent);margin-bottom:8px}
+.live-transcript-meta{font-size:11px;color:var(--text2);margin-bottom:10px}
+.live-transcript-chat{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding-right:4px}
+.tx-bubble{max-width:92%;padding:8px 10px;border-radius:10px;font-size:12px;line-height:1.45}
+.tx-bubble.user{align-self:flex-start;background:#1a2a1a;border:1px solid #2a4a2a}
+.tx-bubble.agent{align-self:flex-end;background:#1a1f2a;border:1px solid #2a3a4a}
+.tx-bubble .tx-label{font-size:10px;color:var(--muted);margin-bottom:3px;text-transform:uppercase}
+.live-sidebar{position:fixed;right:16px;top:120px;width:340px;max-height:calc(100vh - 140px);z-index:90;background:var(--card);border:1px solid var(--accent);border-radius:var(--r);padding:12px;box-shadow:0 8px 32px rgba(0,0,0,.5);display:flex;flex-direction:column}
+.live-sidebar.hidden{display:none}
+.toast-wrap{position:fixed;bottom:20px;right:20px;z-index:999;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:10px 16px;font-size:13px;animation:slideIn .3s}
+.toast.ok{border-color:var(--accent)}
+.toast.err{border-color:var(--danger)}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+.err-msg{color:var(--danger);font-size:12px;margin-top:4px}
+.log-view{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:10px;font-family:var(--mono);font-size:11px;max-height:400px;overflow-y:auto}
+.log-line{padding:2px 0;border-bottom:1px solid rgba(255,255,255,.03)}
+.log-line.error{color:var(--danger)}
+.log-line.warning{color:var(--warn)}
+.log-line.info{color:var(--accent2)}
+.settings-group{border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.settings-group h3{font-size:13px;color:var(--accent);margin-bottom:10px}
+.pw-wrap{position:relative}
+.pw-wrap input{padding-right:36px}
+.pw-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text2);cursor:pointer;font-size:14px}
+.tool-check{display:flex;align-items:center;gap:6px;margin:4px 0;font-size:12px}
+.tool-check input{width:auto}
+.crm-detail{margin-top:12px;padding:12px;background:var(--bg);border-radius:var(--r);border:1px solid var(--border)}
+.hidden{display:none!important}
+.flex-between{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.pagination{display:flex;gap:8px;margin-top:12px;align-items:center}
+.pagination button{background:var(--border);border:none;color:var(--text);padding:4px 12px;border-radius:var(--r);cursor:pointer}
+.setup-step{padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.setup-step span{color:var(--accent);font-weight:700;margin-right:8px}
+.cost-table td:last-child{text-align:right;font-family:var(--mono);color:var(--accent)}
+</style>
+</head>
+<body>
+<header>
+  <h1>OutboundAI</h1>
+  <nav id="nav">
+    <button data-tab="stats" class="active">📊 Stats</button>
+    <button data-tab="single">📞 Single Call</button>
+    <button data-tab="batch">📋 Batch Call</button>
+    <button data-tab="campaigns">🚀 Campaigns</button>
+    <button data-tab="agents">🤖 Agents</button>
+    <button data-tab="prompt">✏️ AI Prompt</button>
+    <button data-tab="appointments">📅 Appointments</button>
+    <button data-tab="calls">📝 Call Logs</button>
+    <button data-tab="numbers">📟 Numbers</button>
+    <button data-tab="crm">👥 CRM</button>
+    <button data-tab="settings">⚙️ Settings</button>
+    <button data-tab="voice">🎙️ Voice</button>
+    <button data-tab="latency">⏱️ Latency</button>
+    <button data-tab="logs">📋 Logs</button>
+    <button data-tab="setup">🔧 Setup</button>
+  </nav>
+</header>
+<div id="tenant-bar" class="tenant-bar">
+  <div class="tenant-bar-inner">
+    <span class="tenant-bar-title">Tenant Context</span>
+    <div class="tenant-field">
+      <label for="tenant-org-id">Organization ID</label>
+      <input id="tenant-org-id" placeholder="e.g. org_test_01" autocomplete="off" />
+    </div>
+    <div class="tenant-field">
+      <label for="tenant-lead-id">Lead ID</label>
+      <input id="tenant-lead-id" placeholder="e.g. lead_test_01" autocomplete="off" />
+    </div>
+    <div class="tenant-field">
+      <label for="tenant-trunk-id">LiveKit Trunk ID <span style="color:var(--danger)">*</span></label>
+      <input id="tenant-trunk-id" placeholder="e.g. ST_xxxxxxxxxxxx" autocomplete="off" />
+    </div>
+    <div class="tenant-field" style="max-width:300px">
+      <label for="tenant-gemini-key">Gemini API Key <span style="color:var(--danger)">*</span></label>
+      <div class="pw-wrap">
+        <input id="tenant-gemini-key" type="password" placeholder="AIzaSy..." autocomplete="off" oninput="syncTenantKeyToSc()" />
+        <button type="button" class="pw-toggle" onclick="togglePw('tenant-gemini-key')">👁️</button>
+      </div>
+    </div>
+    <button type="button" class="btn sm" onclick="saveTenantContext()" style="margin-bottom:1px;background:var(--accent);color:#000">💾 Save Context</button>
+    <button type="button" class="btn sm secondary" onclick="clearTenantContext()" style="margin-bottom:1px">Clear</button>
+    <button type="button" class="btn sm secondary" id="btn-tenant-creds" onclick="toggleTenantCredsDrawer()" style="margin-bottom:1px">⚙️ SIP Overrides</button>
+    <span id="tenant-saved-hint" class="tenant-hint">Set Org, Lead, Trunk ID, &amp; Gemini Key → applied to all calls</span>
+  </div>
+  <div id="tenant-creds-drawer" class="hidden" style="max-width:1400px;margin:12px auto 0;padding:12px;background:#161616;border:1px solid var(--accent);border-radius:var(--r)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <strong style="color:var(--accent);font-size:13px">🔑 Global Client Credentials (Sent with all calls)</strong>
+      <button type="button" class="btn sm secondary" onclick="toggleTenantCredsDrawer()">✕ Close</button>
+    </div>
+    <div class="grid grid-2">
+      <div class="form-row">
+        <label>Gemini API Key <span style="color:var(--danger)">*</span></label>
+        <div class="pw-wrap">
+          <input id="top-gemini-key" type="password" placeholder="AIzaSy..." oninput="syncTopCredsToSc()" />
+          <button type="button" class="pw-toggle" onclick="togglePw('top-gemini-key')">👁️</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Vobiz Caller ID (From Number) <span style="color:var(--danger)">*</span></label>
+        <input id="top-vobiz-caller-id" placeholder="+911145678900" oninput="syncTopCredsToSc()" />
+      </div>
+    </div>
+    <div class="grid grid-3">
+      <div class="form-row">
+        <label>Vobiz SIP Username <span style="color:var(--danger)">*</span></label>
+        <input id="top-vobiz-user" placeholder="e.g. user123" oninput="syncTopCredsToSc()" />
+      </div>
+      <div class="form-row">
+        <label>Vobiz SIP Password <span style="color:var(--danger)">*</span></label>
+        <div class="pw-wrap">
+          <input id="top-vobiz-pass" type="password" placeholder="SIP Password" oninput="syncTopCredsToSc()" />
+          <button type="button" class="pw-toggle" onclick="togglePw('top-vobiz-pass')">👁️</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Vobiz SIP Domain</label>
+        <input id="top-vobiz-domain" value="sip.vobiz.ai" placeholder="sip.vobiz.ai" oninput="syncTopCredsToSc()" />
+      </div>
+    </div>
+    <details style="margin-top:6px">
+      <summary style="font-size:12px;color:var(--accent2);cursor:pointer">LiveKit Credentials / Trunk Override (Optional)</summary>
+      <div class="grid grid-3" style="margin-top:8px">
+        <div class="form-row">
+          <label>LiveKit URL</label>
+          <input id="top-lk-url" placeholder="https://xxx.livekit.cloud" oninput="syncTopCredsToSc()" />
+        </div>
+        <div class="form-row">
+          <label>LiveKit API Key</label>
+          <input id="top-lk-key" placeholder="API..." oninput="syncTopCredsToSc()" />
+        </div>
+        <div class="form-row">
+          <label>LiveKit API Secret</label>
+          <div class="pw-wrap">
+            <input id="top-lk-secret" type="password" placeholder="Secret..." oninput="syncTopCredsToSc()" />
+            <button type="button" class="pw-toggle" onclick="togglePw('top-lk-secret')">👁️</button>
+          </div>
+        </div>
+      </div>
+    </details>
+    <div style="margin-top:10px;display:flex;gap:8px">
+      <button type="button" class="btn sm" onclick="saveTopClientCredentials()">💾 Save Global Client Keys</button>
+      <button type="button" class="btn sm secondary" onclick="clearClientCredentials()">Clear</button>
+    </div>
+  </div>
+</div>
+<main>
+<!-- STATS -->
+<div id="tab-stats" class="tab-panel active">
+  <div class="grid grid-5" id="kpi-grid">
+    <div class="kpi"><div class="val" id="kpi-total">—</div><div class="lbl">Total Calls</div></div>
+    <div class="kpi"><div class="val" id="kpi-booked">—</div><div class="lbl">Booked</div></div>
+    <div class="kpi"><div class="val" id="kpi-notint">—</div><div class="lbl">Not Interested</div></div>
+    <div class="kpi"><div class="val" id="kpi-rate">—</div><div class="lbl">Booking Rate %</div></div>
+    <div class="kpi"><div class="val" id="kpi-dur">—</div><div class="lbl">Avg Duration (s)</div></div>
+  </div>
+  <div class="card" style="margin-top:16px"><h2>Live Config</h2><div id="live-config"></div></div>
+  <div class="grid grid-3">
+    <div class="chart-wrap"><canvas id="chart-outcomes"></canvas></div>
+    <div class="chart-wrap"><canvas id="chart-timeline"></canvas></div>
+    <div class="chart-wrap"><canvas id="chart-duration"></canvas></div>
+  </div>
+</div>
+
+<!-- SINGLE CALL -->
+<div id="tab-single" class="tab-panel">
+  <div class="live-call-layout">
+    <div class="card"><h2>Place Single Outbound Call</h2>
+      <form id="call-form">
+        <div class="contact-box">
+          <h4>Contact 1</h4>
+          <div class="grid grid-2">
+            <div class="form-row"><label>Lead Name</label><input id="sc-name-1" placeholder="e.g. Rahul" /></div>
+            <div class="form-row"><label>Phone Number</label><input id="sc-phone-1" placeholder="+919876543210" required /></div>
+          </div>
+        </div>
+        <div class="contact-box optional">
+          <h4>Contact 2 <span class="hint">(optional — dials at the same time as Contact 1)</span></h4>
+          <div class="grid grid-2">
+            <div class="form-row"><label>Lead Name</label><input id="sc-name-2" placeholder="e.g. Priya" /></div>
+            <div class="form-row"><label>Phone Number</label><input id="sc-phone-2" placeholder="+919123456789" /></div>
+          </div>
+        </div>
+        <p class="project-hint" style="margin:-4px 0 12px">
+          Both numbers ring together when you have <strong>2 Gemini API keys</strong> in
+          <code>GEMINI_API_KEYS</code>. With 1 key, Contact 2 may wait until Contact 1’s agent frees the key.
+        </p>
+        <div class="grid grid-2">
+          <div class="form-row"><label>Business Name</label><input id="sc-biz" value="our company" /></div>
+          <div class="form-row"><label>Service Type</label><input id="sc-service" value="our service" /></div>
+          <div class="form-row"><label>From Number (caller ID)</label>
+            <select id="sc-from-number">
+              <option value="">— Auto (use pool DID or default) —</option>
+            </select>
+          </div>
+          <div class="form-row"><label>Agent Profile</label><select id="sc-agent-profile"><option value="">Default</option></select></div>
+        </div>
+        <div class="project-panel">
+          <label style="margin-bottom:8px">Projects for this call</label>
+          <div class="project-mode">
+            <label><input type="radio" name="sc-project-mode" value="none" checked /> No project (generic script)</label>
+            <label><input type="radio" name="sc-project-mode" value="single" /> Single project</label>
+            <label><input type="radio" name="sc-project-mode" value="multi" /> Multiple projects</label>
+          </div>
+          <div id="sc-single-project" class="hidden">
+            <div class="grid grid-2">
+              <div class="form-row"><label>Project ID</label><input id="sc-project-id" placeholder="proj_123" /></div>
+              <div class="form-row"><label>Project Name (preview)</label><input id="sc-project-name-preview" placeholder="Auto from details" readonly style="opacity:.7" /></div>
+            </div>
+            <div class="form-row"><label>projectDetails</label><textarea id="sc-project-details" rows="6" placeholder="Project Name: Green Valley&#10;Location: Noida&#10;Starting Price: 80 Lakh&#10;..."></textarea></div>
+          </div>
+          <div id="sc-multi-project" class="hidden">
+            <p class="project-hint">Add 2 or more projects — agent will present each one-by-one and lead picks preferred project.</p>
+            <div id="sc-multi-project-list"></div>
+            <button type="button" class="btn secondary sm" onclick="addMultiProjectRow('sc')">+ Add project</button>
+          </div>
+        </div>
+        <div class="form-row inline"><input type="checkbox" id="sc-custom-prompt-cb" /><label for="sc-custom-prompt-cb">Use custom prompt for this call</label></div>
+        <div class="form-row hidden" id="sc-prompt-wrap"><label>Custom Prompt</label><textarea id="sc-prompt" rows="6"></textarea></div>
+        <div id="sc-err" class="err-msg"></div>
+        <button type="submit" class="btn" style="margin-top:12px">📞 Dispatch Call</button>
+      </form>
+    </div>
+    <div class="live-transcript-panel" id="single-live-panel">
+      <h3>🔴 Live Transcript</h3>
+      <div class="live-transcript-meta" id="single-live-meta">No active call — dispatch a call to see live text here</div>
+      <div class="live-transcript-chat" id="single-live-chat"><p style="color:var(--muted);font-size:12px">Transcript appears in real time during the call (powered by Gemini, not Deepgram).</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- BATCH CALL -->
+<div id="tab-batch" class="tab-panel">
+  <div class="card"><h2>Batch CSV Dial</h2>
+    <div class="grid grid-2">
+      <div class="form-row"><label>Agent Profile</label><select id="bc-agent-profile"><option value="">Default</option></select></div>
+      <div class="form-row"><label>Parallel slots (at once)</label><input id="bc-parallel" type="number" value="2" min="1" max="2" /></div>
+      <div class="form-row"><label>Delay before next lead on a free slot (seconds)</label><input id="bc-delay" type="number" value="0" min="0" /></div>
+    </div>
+    <p id="bc-parallel-hint" style="color:var(--text2);font-size:12px;margin:-4px 0 12px">
+      Up to N leads dial at once. When one is <strong>busy / no-answer / ends</strong>, that slot
+      automatically dials the <strong>next queued lead</strong>.
+      Hard cap = <strong>min(your choice, free+busy caller-ID DIDs, Gemini keys)</strong>.
+      With 2 pool numbers you can run at most 2 parallel calls.
+    </p>
+    <div class="project-panel">
+      <label style="margin-bottom:8px">Projects for all contacts</label>
+      <p class="project-hint" style="margin-bottom:8px">Same projects for every row — CSV columns <code>project_id</code>, <code>projectDetails</code>, or <code>projects_json</code> override per contact.</p>
+      <div class="project-mode">
+        <label><input type="radio" name="bc-project-mode" value="none" checked /> No project (generic script)</label>
+        <label><input type="radio" name="bc-project-mode" value="single" /> Single project</label>
+        <label><input type="radio" name="bc-project-mode" value="multi" /> Multiple projects</label>
+      </div>
+      <div id="bc-single-project" class="hidden">
+        <div class="grid grid-2">
+          <div class="form-row"><label>Project ID</label><input id="bc-project-id" placeholder="proj_123" /></div>
+          <div class="form-row"><label>Project Name (preview)</label><input id="bc-project-name-preview" placeholder="Auto from details" readonly style="opacity:.7" /></div>
+        </div>
+        <div class="form-row"><label>projectDetails</label><textarea id="bc-project-details" rows="6" placeholder="Project Name: Green Valley&#10;Location: Noida&#10;Starting Price: 80 Lakh&#10;..."></textarea></div>
+      </div>
+      <div id="bc-multi-project" class="hidden">
+        <p class="project-hint">Add 2 or more projects — agent will present each one-by-one and lead picks preferred project.</p>
+        <div id="bc-multi-project-list"></div>
+        <button type="button" class="btn secondary sm" onclick="addMultiProjectRow('bc')">+ Add project</button>
+      </div>
+    </div>
+    <div class="form-row"><label>CSV File (phone, lead_name, … — optional: from_number / caller_id, project_id, projectDetails, projects_json)</label><input id="bc-csv" type="file" accept=".csv" /></div>
+    <button class="btn secondary" onclick="parseBatchCSV()">Parse CSV</button>
+    <div id="bc-preview" style="margin-top:12px;overflow-x:auto"></div>
+    <div class="progress hidden" id="bc-progress-wrap"><div class="progress-bar" id="bc-progress"></div></div>
+    <button class="btn hidden" id="bc-start" onclick="startBatch()">Start Batch</button>
+  </div>
+</div>
+
+<!-- CAMPAIGNS -->
+<div id="tab-campaigns" class="tab-panel">
+  <div class="card"><h2>Create Campaign</h2>
+    <div class="grid grid-2">
+      <div class="form-row"><label>Campaign Name</label><input id="camp-name" /></div>
+      <div class="form-row"><label>Schedule</label><select id="camp-schedule"><option value="once">Once (manual start)</option><option value="daily">Daily</option><option value="weekdays">Weekdays</option></select></div>
+      <div class="form-row"><label>Schedule Time</label><input id="camp-time" type="time" value="09:00" /></div>
+      <div class="form-row"><label>Parallel slots (at once)</label><input id="camp-parallel" type="number" value="2" min="1" max="2" /></div>
+      <div class="form-row"><label>Delay before next lead on a free slot (seconds)</label><input id="camp-delay" type="number" value="0" min="0" /></div>
+      <div class="form-row"><label>Agent Profile</label><select id="camp-agent-profile"><option value="">Default</option></select></div>
+    </div>
+    <p id="camp-parallel-hint" style="color:var(--text2);font-size:12px;margin:-4px 0 8px">
+      Parallel slots are capped by your phone-number pool (caller IDs) and Gemini keys.
+    </p>
+    <div class="form-row inline" style="margin:8px 0 4px">
+      <input type="checkbox" id="camp-queue-advance" checked disabled />
+      <label for="camp-queue-advance"><strong>FIFO queue (required)</strong> — only N live calls; next lead when a DID frees</label>
+    </div>
+    <p style="color:var(--text2);font-size:12px;margin:0 0 12px">
+      Example: 4 leads + 2 caller-ID numbers → dial leads 1–2 first; when one finishes, dial lead 3 on that free DID, then lead 4, until all are called.
+      Parallel slots are capped by your phone pool (currently 2 DIDs ⇒ max 2 at once).
+    </p>
+    <div class="form-row inline"><input type="checkbox" id="camp-custom-prompt-cb" /><label for="camp-custom-prompt-cb">Custom prompt</label></div>
+    <div class="form-row hidden" id="camp-prompt-wrap"><textarea id="camp-prompt" rows="4"></textarea></div>
+    <div class="project-panel">
+      <label style="margin-bottom:8px">Projects for all contacts</label>
+      <p class="project-hint" style="margin-bottom:8px">Same projects for every row — CSV columns <code>project_id</code>, <code>projectDetails</code>, or <code>projects_json</code> override per contact.</p>
+      <div class="project-mode">
+        <label><input type="radio" name="camp-project-mode" value="none" checked /> No project (generic script)</label>
+        <label><input type="radio" name="camp-project-mode" value="single" /> Single project</label>
+        <label><input type="radio" name="camp-project-mode" value="multi" /> Multiple projects</label>
+      </div>
+      <div id="camp-single-project" class="hidden">
+        <div class="grid grid-2">
+          <div class="form-row"><label>Project ID</label><input id="camp-project-id" placeholder="proj_123" /></div>
+          <div class="form-row"><label>Project Name (preview)</label><input id="camp-project-name-preview" placeholder="Auto from details" readonly style="opacity:.7" /></div>
+        </div>
+        <div class="form-row"><label>projectDetails</label><textarea id="camp-project-details" rows="6" placeholder="Project Name: Green Valley&#10;Location: Noida&#10;Starting Price: 80 Lakh&#10;..."></textarea></div>
+      </div>
+      <div id="camp-multi-project" class="hidden">
+        <p class="project-hint">Add 2 or more projects — agent will present each one-by-one and lead picks preferred project.</p>
+        <div id="camp-multi-project-list"></div>
+        <button type="button" class="btn secondary sm" onclick="addMultiProjectRow('camp')">+ Add project</button>
+      </div>
+    </div>
+    <div class="form-row"><label>CSV Contacts (phone, lead_name, … — optional: from_number / caller_id, project_id, projectDetails, projects_json)</label><input id="camp-csv" type="file" accept=".csv" /></div>
+    <button class="btn secondary" onclick="parseCampCSV()">Parse CSV</button>
+    <div id="camp-preview" style="margin-top:8px;overflow-x:auto"></div>
+    <button class="btn" style="margin-top:12px" onclick="createCampaign()">🚀 Create Campaign</button>
+  </div>
+  <div class="card">
+    <h2>Campaigns</h2>
+    <p style="color:var(--text2);font-size:12px;margin:0 0 12px">
+      Only <strong>one campaign</strong> can dial at a time. If another is running, Start Calls is blocked until it finishes.
+    </p>
+    <div id="camp-list" style="overflow-x:auto"></div>
+  </div>
+</div>
+
+<!-- AGENTS -->
+<div id="tab-agents" class="tab-panel">
+  <div class="card"><h2 id="agent-form-title">Create Agent Profile</h2>
+    <input type="hidden" id="agent-edit-id" value="" />
+    <div class="grid grid-2">
+      <div class="form-row"><label>Profile Name</label><input id="agent-name" /></div>
+      <div class="form-row"><label>Model</label><select id="agent-model">
+        <option value="gemini-3.8-live" selected>gemini-3.8-live ⭐</option>
+      </select></div>
+      <div class="form-row"><label>Voice</label><select id="agent-voice"></select></div>
+      <div class="form-row inline" style="align-items:flex-end"><input type="checkbox" id="agent-default" /><label for="agent-default">Set as default</label></div>
+    </div>
+    <div class="form-row"><label>Enabled Tools (comma-separated, empty = all)</label><input id="agent-tools" placeholder="check_availability,book_appointment,end_call" /></div>
+    <div class="form-row"><label>System Prompt</label><textarea id="agent-prompt" rows="8"></textarea></div>
+    <button class="btn" onclick="saveAgentProfile()">Save Profile</button>
+    <button class="btn secondary" onclick="resetAgentForm()">Reset</button>
+  </div>
+  <div class="card"><h2>Agent Profiles</h2><div id="agent-list" style="overflow-x:auto"></div></div>
+</div>
+
+<!-- PROMPT -->
+<div id="tab-prompt" class="tab-panel">
+  <div class="card"><h2>Global System Prompt</h2>
+    <p id="prompt-source-hint" style="margin:0 0 10px;color:var(--text2);font-size:13px">
+      Save here to change what the agent says on calls. Reset clears the dashboard prompt and uses the code default from <code>prompts.py</code>.
+    </p>
+    <textarea id="global-prompt" rows="20"></textarea>
+    <div class="flex-between" style="margin-top:8px">
+      <span id="prompt-chars" style="color:var(--text2);font-size:12px">0 chars</span>
+      <div>
+        <button class="btn" id="prompt-save-btn" onclick="savePrompt()">Save</button>
+        <button class="btn secondary" id="prompt-reset-btn" onclick="resetPrompt()">Reset to Default</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- APPOINTMENTS -->
+<div id="tab-appointments" class="tab-panel">
+  <div class="card"><div class="flex-between"><h2>Appointments</h2>
+    <div class="form-row" style="margin:0"><label>Filter Date</label><input id="appt-date-filter" type="date" onchange="loadAppointments()" style="width:auto" /></div></div>
+    <div id="appt-list" style="overflow-x:auto;margin-top:12px"></div>
+  </div>
+</div>
+
+<!-- CALL LOGS -->
+<div id="tab-calls" class="tab-panel">
+  <div class="card hidden" id="live-calls-card"><h2>🔴 Live Calls</h2><div id="live-calls-list"></div></div>
+  <div class="card" id="billing-card">
+    <div class="flex-between" style="align-items:flex-start;gap:12px;flex-wrap:wrap">
+      <div>
+        <h2 style="margin:0 0 4px">Vobiz Billing</h2>
+        <p id="billing-scope-hint" style="margin:0;color:var(--text2);font-size:12px">Set Organization ID in the tenant bar to scope cost to one org.</p>
+      </div>
+      <button type="button" class="btn sm secondary" onclick="loadBilling()">Refresh</button>
+    </div>
+    <div class="grid grid-5" style="margin-top:14px" id="billing-kpi">
+      <div class="kpi"><div class="val" id="bill-rate">—</div><div class="lbl" id="bill-rate-lbl">Avg rate / min</div></div>
+      <div class="kpi"><div class="val" id="bill-calls">—</div><div class="lbl">Calls</div></div>
+      <div class="kpi"><div class="val" id="bill-mins">—</div><div class="lbl">Billable mins</div></div>
+      <div class="kpi"><div class="val" id="bill-dur">—</div><div class="lbl">Talk time</div></div>
+      <div class="kpi"><div class="val" id="bill-cost">—</div><div class="lbl" id="bill-cost-lbl">Vobiz cost</div></div>
+    </div>
+  </div>
+  <div class="card"><h2>Call Logs</h2>
+    <div class="grid grid-5" style="margin-bottom:14px" id="calls-gemini-kpi">
+      <div class="kpi"><div class="val" id="gk-available">—</div><div class="lbl">Keys available</div></div>
+      <div class="kpi"><div class="val" id="gk-leased">—</div><div class="lbl">Keys leased</div></div>
+      <div class="kpi"><div class="val" id="gk-tokens-total">—</div><div class="lbl">Tokens total (est.)</div></div>
+      <div class="kpi"><div class="val" id="gk-tokens-per-min">—</div><div class="lbl">Tokens / min (est.)</div></div>
+      <div class="kpi"><div class="val" id="gk-tokens-inout">—</div><div class="lbl">In / Out</div></div>
+    </div>
+    <p id="gk-hint" style="color:var(--text2);font-size:12px;margin:-6px 0 12px">Tokens ≈ transcript estimate. Tokens/min = total tokens ÷ talk minutes.</p>
+    <div id="calls-list" style="overflow-x:auto"></div>
+    <div class="pagination"><button onclick="loadCalls(callsPage-1)" id="calls-prev">← Prev</button><span id="calls-page-info">Page 1</span><button onclick="loadCalls(callsPage+1)" id="calls-next">Next →</button></div>
+  </div>
+  <div class="card hidden" id="transcript-panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <h2 style="margin:0">Transcript</h2>
+      <button class="btn secondary" onclick="$('transcript-panel').classList.add('hidden')">✕ Close</button>
+    </div>
+    <div id="transcript-body" class="live-transcript-chat" style="max-height:420px;overflow-y:auto;padding:4px"></div>
+  </div>
+</div>
+
+<!-- NUMBERS (outbound caller-ID pool) -->
+<div id="tab-numbers" class="tab-panel">
+  <div class="card">
+    <div class="flex-between">
+      <h2>Phone Numbers</h2>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn sm secondary" onclick="loadNumbers()">Refresh</button>
+        <button class="btn sm" onclick="syncNumbers()">Sync from Vobiz</button>
+      </div>
+    </div>
+    <div class="kpi-row" style="margin:12px 0 16px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+      <div class="kpi"><div class="val" id="num-total">—</div><div class="lbl">Total</div></div>
+      <div class="kpi"><div class="val" id="num-free" style="color:var(--accent)">—</div><div class="lbl">Free</div></div>
+      <div class="kpi"><div class="val" id="num-busy" style="color:var(--warn)">—</div><div class="lbl">Busy</div></div>
+      <div class="kpi"><div class="val" id="num-disabled" style="color:var(--text2)">—</div><div class="lbl">Disabled</div></div>
+    </div>
+    <p style="color:var(--text2);font-size:12px;margin-bottom:12px">
+      <strong>Dynamic pool</strong> — Sync pulls <em>all</em> owned DIDs from Vobiz (and refreshes the LiveKit trunk).
+      Add new numbers in Vobiz → Sync here (or wait ~15 min auto-sync) → they appear for auto-lease and dropdowns.
+      No default DID. Assign an <code>organization_id</code> so each builder uses their own DID (empty = shared).
+      Busy numbers are leased per call and freed when the call ends — a toast pops up when a DID becomes free again.
+    </p>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>Number</th>
+            <th>Organization</th>
+            <th>Status</th>
+            <th>Current call</th>
+            <th>Room</th>
+            <th>Last used</th>
+            <th>Synced</th>
+            <th>Vobiz</th>
+          </tr>
+        </thead>
+        <tbody id="numbers-tbody"><tr><td colspan="8" style="color:var(--text2)">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- CRM -->
+<div id="tab-crm" class="tab-panel">
+  <div class="card" id="crm-active-calls-card">
+    <h2>🔴 Active Calls</h2>
+    <div id="crm-active-calls-list"><p style="color:var(--muted);font-size:13px">No active calls right now.</p></div>
+  </div>
+  <div class="card"><h2>Contacts</h2><div id="crm-list" style="overflow-x:auto"></div>
+    <div id="crm-detail" class="crm-detail hidden"></div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div id="tab-settings" class="tab-panel">
+  <div id="env-only-banner" class="card hidden" style="border-color:var(--accent2);margin-bottom:16px">
+    <strong>Azure environment variables</strong> — configuration is read-only here. Set all keys in Azure Portal → Application settings, then restart the app.
+  </div>
+  <div class="settings-group"><h3>LiveKit</h3>
+    <div class="grid grid-2">
+      <div class="form-row"><label>LIVEKIT_URL</label><input id="s-LIVEKIT_URL" /></div>
+      <div class="form-row"><label>LIVEKIT_API_KEY</label><div class="pw-wrap"><input id="s-LIVEKIT_API_KEY" type="password" /><button type="button" class="pw-toggle" onclick="togglePw('s-LIVEKIT_API_KEY')">👁</button></div></div>
+      <div class="form-row"><label>LIVEKIT_API_SECRET</label><div class="pw-wrap"><input id="s-LIVEKIT_API_SECRET" type="password" /><button type="button" class="pw-toggle" onclick="togglePw('s-LIVEKIT_API_SECRET')">👁</button></div></div>
+    </div>
+    <button class="btn sm" onclick="saveGroup('livekit')">Save LiveKit</button>
+  </div>
+  <div class="settings-group"><h3>Gemini</h3>
+    <div class="grid grid-2">
+      <div class="form-row"><label>GOOGLE_API_KEY</label><div class="pw-wrap"><input id="s-GOOGLE_API_KEY" type="password" /><button type="button" class="pw-toggle" onclick="togglePw('s-GOOGLE_API_KEY')">👁</button></div></div>
+      <div class="form-row"><label>GEMINI_MODEL</label><select id="s-GEMINI_MODEL"><option value="gemini-3.8-live" selected>gemini-3.8-live ⭐</option></select></div>
+      <div class="form-row"><label>GEMINI_TTS_VOICE</label><select id="s-GEMINI_TTS_VOICE"></select></div>
+      <div class="form-row"><label>USE_GEMINI_REALTIME</label><select id="s-USE_GEMINI_REALTIME"><option value="true">true (Gemini Live)</option><option value="false">false (Pipeline fallback)</option></select></div>
+    </div>
+    <button class="btn sm" onclick="saveGroup('gemini')">Save Gemini</button>
+  </div>
+  <div class="settings-group"><h3>Vobiz SIP</h3>
+    <div class="grid grid-2">
+      <div class="form-row"><label>VOBIZ_SIP_DOMAIN</label><input id="s-VOBIZ_SIP_DOMAIN" /></div>
+      <div class="form-row"><label>VOBIZ_USERNAME</label><input id="s-VOBIZ_USERNAME" /></div>
+      <div class="form-row"><label>VOBIZ_PASSWORD</label><div class="pw-wrap"><input id="s-VOBIZ_PASSWORD" type="password" /><button type="button" class="pw-toggle" onclick="togglePw('s-VOBIZ_PASSWORD')">👁</button></div></div>
+      <div class="form-row"><label>VOBIZ_OUTBOUND_NUMBER</label><input id="s-VOBIZ_OUTBOUND_NUMBER" /></div>
+      <div class="form-row"><label>OUTBOUND_TRUNK_ID</label><input id="s-OUTBOUND_TRUNK_ID" /></div>
+      <div class="form-row"><label>DEFAULT_TRANSFER_NUMBER</label><input id="s-DEFAULT_TRANSFER_NUMBER" /></div>
+      <div class="form-row"><label>VOBIZ_AUTH_ID</label><input id="s-VOBIZ_AUTH_ID" placeholder="MA_XXXXXXXX from Vobiz console" /></div>
+      <div class="form-row"><label>VOBIZ_AUTH_TOKEN</label><div class="pw-wrap"><input id="s-VOBIZ_AUTH_TOKEN" type="password" /><button type="button" class="pw-toggle" onclick="togglePw('s-VOBIZ_AUTH_TOKEN')">👁</button></div></div>
+      <div class="form-row"><label>VOBIZ_RATE_PER_MINUTE</label><input id="s-VOBIZ_RATE_PER_MINUTE" placeholder="Fallback only if CDR missing" /></div>
+    </div>
+    <button class="btn sm" onclick="saveGroup('vobiz')">Save Vobiz</button>
+    <button class="btn sm secondary" onclick="createSIPTrunk()">⚡ Create SIP Trunk in LiveKit</button>
+  </div>
+  <div class="settings-group"><h3>Twilio SMS</h3>
+    <div class="grid grid-2">
+      <div class="form-row"><label>TWILIO_ACCOUNT_SID</label><input id="s-TWILIO_ACCOUNT_SID" /></div>
+      <div class="form-row"><label>TWILIO_AUTH_TOKEN</label><div class="pw-wrap"><input id="s-TWILIO_AUTH_TOKEN" type="password" /><button type="button" class="pw-toggle" onclick="togglePw('s-TWILIO_AUTH_TOKEN')">👁</button></div></div>
+      <div class="form-row"><label>TWILIO_FROM_NUMBER</label><input id="s-TWILIO_FROM_NUMBER" /></div>
+    </div>
+    <button class="btn sm" onclick="saveGroup('twilio')">Save Twilio</button>
+  </div>
+  <div class="settings-group"><h3>S3 Recordings</h3>
+    <div class="grid grid-2">
+      <div class="form-row"><label>S3_ACCESS_KEY_ID</label><input id="s-S3_ACCESS_KEY_ID" /></div>
+      <div class="form-row"><label>S3_SECRET_ACCESS_KEY</label><div class="pw-wrap"><input id="s-S3_SECRET_ACCESS_KEY" type="password" /><button type="button" class="pw-toggle" onclick="togglePw('s-S3_SECRET_ACCESS_KEY')">👁</button></div></div>
+      <div class="form-row"><label>S3_ENDPOINT_URL</label><input id="s-S3_ENDPOINT_URL" /></div>
+      <div class="form-row"><label>S3_REGION</label><input id="s-S3_REGION" value="ap-northeast-1" /></div>
+      <div class="form-row"><label>S3_BUCKET</label><input id="s-S3_BUCKET" /></div>
+    </div>
+    <button class="btn sm" onclick="saveGroup('s3')">Save S3</button>
+  </div>
+  <div class="settings-group"><h3>Cal.com</h3>
+    <div class="grid grid-2">
+      <div class="form-row"><label>CALCOM_API_KEY</label><div class="pw-wrap"><input id="s-CALCOM_API_KEY" type="password" /><button type="button" class="pw-toggle" onclick="togglePw('s-CALCOM_API_KEY')">👁</button></div></div>
+      <div class="form-row"><label>CALCOM_EVENT_TYPE_ID</label><input id="s-CALCOM_EVENT_TYPE_ID" /></div>
+      <div class="form-row"><label>CALCOM_TIMEZONE</label><input id="s-CALCOM_TIMEZONE" value="Asia/Kolkata" /></div>
+    </div>
+    <button class="btn sm" onclick="saveGroup('calcom')">Save Cal.com</button>
+  </div>
+  <div class="settings-group"><h3>Tool Toggles</h3>
+    <div id="tool-toggles"></div>
+    <button class="btn sm" onclick="saveToolToggles()">Save Tools</button>
+  </div>
+</div>
+
+<div id="tab-latency" class="tab-panel">
+  <style>
+    .lat-wrap{display:grid;grid-template-columns:minmax(220px,300px) 1fr;gap:16px}
+    @media (max-width:800px){.lat-wrap{grid-template-columns:1fr}}
+    .lat-call{padding:8px 10px;border:1px solid var(--border);border-radius:var(--r);margin-bottom:6px;cursor:pointer;font-size:12px}
+    .lat-call.active{border-color:var(--accent)}
+    .lat-call .sub{color:var(--muted);font-size:11px}
+    .lat-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:12px}
+    .lat-stat{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px}
+    .lat-stat .k{color:var(--muted);font-size:11px}
+    .lat-stat .v{font-size:18px;font-weight:600;font-variant-numeric:tabular-nums}
+    .lat-msg{padding:8px 10px;border-radius:var(--r);margin:6px 0;max-width:85%;font-size:13px;line-height:1.4}
+    .lat-msg.lead{background:var(--bg);border:1px solid var(--border)}
+    .lat-msg.agent{background:rgba(0,204,255,.08);border:1px solid rgba(0,204,255,.25);margin-left:auto}
+    .lat-msg .who{font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:2px}
+    .lat-turn{margin:4px 0 4px auto;max-width:85%;font-size:11px;font-variant-numeric:tabular-nums}
+    .lat-bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--bg);margin-top:3px}
+    .lat-bar span{display:block;height:100%}
+    #tab-latency{--series-1:#3987e5;--series-2:#d95926;--series-3:#199e70;--series-4:#c98500}
+    .lat-eou{background:var(--series-2)} .lat-llm{background:var(--series-3)} .lat-tts{background:var(--series-4)}
+    .lat-chart{position:relative;margin:8px 0 16px}
+    .lat-chart h3{margin:0 0 2px;font-size:13px}
+    .lat-chart .sub{color:var(--muted);font-size:11px;margin-bottom:6px}
+    .lat-chart svg{display:block;width:100%;height:220px;overflow:visible}
+    .lat-chart .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:11px;color:var(--text2);margin-bottom:4px}
+    .lat-chart .legend i{display:inline-block;width:12px;height:2px;vertical-align:middle;margin-right:5px;border-radius:1px}
+    .lat-tip{position:absolute;pointer-events:none;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:11px;line-height:1.5;white-space:nowrap;display:none;z-index:2}
+    .lat-tip b{color:var(--text)} .lat-tip span{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px}
+    .lat-today{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px}
+    .lat-today .lat-stat .v{font-size:15px}
+    .lat-legend span{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 4px 0 10px;vertical-align:middle}
+    .lat-slow{color:var(--danger);font-weight:600} .lat-ok{color:var(--accent);font-weight:600}
+  </style>
+  <div class="card">
+    <h2>Response latency (live)</h2>
+    <p style="color:var(--muted);margin:4px 0 0">Time from the lead stopping to the agent's first audio, split by model: <strong>turn end / STT</strong> (Sarvam), <strong>LLM</strong> (Mercury, time to first token) and <strong>TTS</strong> (Cartesia, time to first audio). Updates every 2 seconds while a call runs.
+      <span class="lat-legend"><span class="lat-eou"></span>turn end + STT (Sarvam)<span class="lat-llm"></span>LLM (Mercury)<span class="lat-tts"></span>TTS (Cartesia)</span></p>
+  </div>
+  <div class="lat-wrap">
+    <div class="card"><h3 style="margin-top:0">Today</h3><div id="lat-today" class="lat-today"></div><h3>Calls</h3><div id="lat-calls"><p style="color:var(--muted)">No calls yet.</p></div></div>
+    <div class="card"><div id="lat-detail"><p style="color:var(--muted)">Pick a call. The newest call opens automatically.</p></div></div>
+  </div>
+</div>
+
+<div id="tab-voice" class="tab-panel">
+  <div class="card">
+    <h2>Agent voice (Cartesia Sonic)</h2>
+    <p style="color:var(--muted);margin:4px 0 12px">Pick a voice, press <strong>Preview</strong> to hear it, then <strong>Save</strong>. Saved changes apply from the <strong>next call</strong> automatically — no agent restart needed. A call already in progress keeps its voice. All voices listed are female with an Indian accent.</p>
+    <div id="voice-banner" class="card hidden" style="border-color:var(--accent2);margin-bottom:12px"></div>
+    <div id="v-cartesia-warn" class="card hidden" style="border-color:var(--warn);margin-bottom:12px">CARTESIA_API_KEY is empty in .env. Preview fails, and the agent will not place calls until the key is added.</div>
+    <div class="grid grid-2">
+      <div class="form-row"><label for="v-cvoice">Voice</label><select id="v-cvoice"></select></div>
+      <div class="form-row"><label for="v-cmodel">Model</label><select id="v-cmodel"></select></div>
+      <div class="form-row">
+        <label for="v-speed">Speed <span id="v-speed-val" style="font-variant-numeric:tabular-nums"></span></label>
+        <input id="v-speed" type="range" step="0.05" />
+        <small style="color:var(--muted)">0.9 calmer · 1.0 normal · 1.1 brisk</small>
+      </div>
+      <div class="form-row">
+        <label for="v-volume">Volume <span id="v-volume-val" style="font-variant-numeric:tabular-nums"></span></label>
+        <input id="v-volume" type="range" step="0.05" />
+        <small style="color:var(--muted)">1.0 normal</small>
+      </div>
+    </div>
+    <div class="form-row">
+      <label for="v-text">Sample line</label>
+      <textarea id="v-text" rows="3" maxlength="400">Namaste ji, main Swaryx se bol rahi hoon. Aapki property enquiry ke baare mein call kiya tha. Kya aapke paas ek minute hai?</textarea>
+    </div>
+    <div class="form-row" style="max-width:220px">
+      <label for="v-language">Preview language</label><select id="v-language"></select>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px">
+      <button class="btn" id="v-preview-btn" onclick="previewVoice()">▶ Preview</button>
+      <button class="btn" onclick="saveVoice()">Save voice</button>
+      <button class="btn secondary" onclick="resetVoice()">Reset to .env</button>
+      <span id="v-status" style="color:var(--muted)"></span>
+    </div>
+    <audio id="v-audio" controls style="width:100%;margin-top:12px" hidden></audio>
+    <p id="v-source" style="color:var(--muted);margin-top:8px;font-size:12px"></p>
+  </div>
+</div>
+
+<!-- LOGS -->
+<div id="tab-logs" class="tab-panel">
+  <div class="card"><div class="flex-between"><h2>Live Logs</h2>
+    <div style="display:flex;gap:8px;align-items:center">
+      <select id="log-level" onchange="loadLogs()"><option value="">All levels</option><option value="info">Info</option><option value="warning">Warning</option><option value="error">Error</option></select>
+      <select id="log-source" onchange="loadLogs()"><option value="">All sources</option><option value="agent">Agent</option><option value="server">Server</option></select>
+      <button class="btn sm secondary" id="log-pause-btn" onclick="toggleLogPause()">Pause</button>
+      <button class="btn sm danger" onclick="clearLogs()">Clear</button>
+    </div></div>
+    <div class="log-view" id="log-view"></div>
+  </div>
+</div>
+
+<!-- SETUP -->
+<div id="tab-setup" class="tab-panel">
+  <div class="grid grid-2">
+    <div class="card"><h2>Quick Start</h2>
+      <div class="setup-step"><span>1</span>Run <code>supabase_schema.sql</code> in Supabase SQL Editor</div>
+      <div class="setup-step"><span>2</span>Go to Settings → fill LiveKit, Gemini, Vobiz credentials</div>
+      <div class="setup-step"><span>3</span>Click ⚡ Create SIP Trunk in LiveKit</div>
+      <div class="setup-step"><span>4</span>Customize AI Prompt for your business</div>
+      <div class="setup-step"><span>5</span>Create an Agent Profile in 🤖 Agents</div>
+      <div class="setup-step"><span>6</span>Test with 📞 Single Call using your own number</div>
+    </div>
+    <div class="card"><h2>Cost Breakdown (per minute)</h2>
+      <table class="cost-table"><tbody>
+        <tr><td>Vobiz SIP</td><td id="setup-vobiz-rate">from VOBIZ_RATE_PER_MINUTE</td></tr>
+        <tr><td>LiveKit Cloud</td><td>≈ ₹0.17</td></tr>
+        <tr><td>Gemini Live</td><td>≈ ₹0.03</td></tr>
+      </tbody></table>
+      <p style="margin-top:12px;color:var(--text2);font-size:12px">With <code>VOBIZ_AUTH_ID</code> + <code>VOBIZ_AUTH_TOKEN</code>, Call Logs pull live <code>total_cost</code> from Vobiz CDRs. Without Auth, fallback estimate is used.</p>
+    </div>
+  </div>
+</div>
+</main>
+
+<div id="live-sidebar" class="live-sidebar hidden">
+  <h3 style="font-size:13px;color:var(--accent);margin-bottom:6px">🔴 Live Call</h3>
+  <div id="live-sidebar-meta" style="font-size:11px;color:var(--text2);margin-bottom:8px"></div>
+  <div id="live-sidebar-chat" class="live-transcript-chat"></div>
+</div>
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+// Escape server data before it goes into innerHTML (lead names, notes, logs come from the CRM/API).
+function esc(v) { return String(v ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+// Value for an inline onclick argument: JSON string literal, HTML-escaped for the attribute.
+function jsa(v) { return esc(JSON.stringify(String(v ?? ''))); }
+const AUTH_KEY = 'apiAuthToken';
+function getAuthToken() { return (localStorage.getItem(AUTH_KEY) || '').trim(); }
+function setAuthToken(t) { if (t) localStorage.setItem(AUTH_KEY, t); else localStorage.removeItem(AUTH_KEY); }
+function authHeaders(extra) {
+  const h = Object.assign({}, extra || {});
+  const t = getAuthToken();
+  if (t) h['Authorization'] = 'Bearer ' + t;
+  return h;
+}
+async function ensureAuthOn401(res) {
+  if (res.status !== 401) return;
+  const t = prompt('API auth required. Paste API_AUTH_TOKEN:');
+  if (t && t.trim()) { setAuthToken(t.trim()); return true; }
+  return false;
+}
+const api = async (path, opts) => {
+  opts = opts || {};
+  opts.headers = authHeaders(opts.headers);
+  let r = await fetch(path, opts);
+  if (r.status === 401 && await ensureAuthOn401(r)) {
+    opts.headers = authHeaders(opts.headers);
+    r = await fetch(path, opts);
+  }
+  if (!r.ok) return r.json().then(e => Promise.reject(e));
+  return r.json();
+};
+const apiPost = (path, body) => api(path, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+const apiDel = path => api(path, {method:'DELETE'});
+const apiPatch = (path, body) => api(path, {method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+
+function parsePropertyData(raw) {
+  if (!raw) return {};
+  if (typeof raw === 'object') return raw;
+  try { const d = JSON.parse(raw); return (d && typeof d === 'object') ? d : {}; } catch(e) { return {}; }
+}
+function propVal(data, key) {
+  const d = parsePropertyData(data);
+  return (d && d[key]) ? String(d[key]).replace(/</g, '&lt;') : '—';
+}
+function renderPropertyCard(data, title='Property details') {
+  const d = parsePropertyData(data);
+  const rows = [
+    ['Preferred project', d.preferred_project],
+    ['Budget', d.budget],
+    ['City', d.city],
+    ['BHK', d.bhk],
+    ['Property type', d.property_type],
+    ['Location', d.location_preference || d.location_fit],
+    ['Possession', d.possession_timeline],
+    ['WhatsApp', d.whatsapp_number],
+  ].filter(([, v]) => v);
+  if (!rows.length) return '';
+  return `<div style="margin-bottom:12px;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r)">
+    <div style="font-size:12px;color:var(--accent);margin-bottom:6px">${title}</div>
+    ${rows.map(([k,v]) => `<div style="font-size:12px;margin:2px 0"><strong>${k}:</strong> ${String(v).replace(/</g,'&lt;')}</div>`).join('')}
+  </div>`;
+}
+
+function extractProjectName(details) {
+  if (!details) return '';
+  const m = String(details).match(/^Project Name:\s*(.+)$/im);
+  return m ? m[1].trim() : '';
+}
+
+function contactProjectSummary(c) {
+  if (Array.isArray(c.projects) && c.projects.length >= 2) {
+    const names = c.projects.map(p => extractProjectName(p.projectDetails || p.project_details) || p.project_id || 'Project');
+    return `<span class="project-badge">${c.projects.length} projects</span> ${names.map(n => String(n).replace(/</g,'&lt;')).join(', ')}`;
+  }
+  const pd = c.projectDetails || c.project_details;
+  if (pd) {
+    const name = extractProjectName(pd);
+    return name ? String(name).replace(/</g,'&lt;') : '1 project';
+  }
+  if (c.project_id) return String(c.project_id).replace(/</g,'&lt;');
+  return '—';
+}
+
+function callProjectSummary(c) {
+  const pref = parsePropertyData(c.property_data).preferred_project;
+  if (pref) return String(pref).replace(/</g,'&lt;');
+  if (c.project_id) return String(c.project_id).replace(/</g,'&lt;');
+  return '—';
+}
+
+function updateProjectModeUI(prefix) {
+  const mode = document.querySelector(`input[name="${prefix}-project-mode"]:checked`)?.value || 'none';
+  $(`${prefix}-single-project`)?.classList.toggle('hidden', mode !== 'single');
+  $(`${prefix}-multi-project`)?.classList.toggle('hidden', mode !== 'multi');
+  const list = $(`${prefix}-multi-project-list`);
+  if (mode === 'multi' && list && !list.children.length) {
+    addMultiProjectRow(prefix);
+    addMultiProjectRow(prefix);
+  }
+}
+
+function addMultiProjectRow(prefix) {
+  const wrap = $(`${prefix}-multi-project-list`);
+  if (!wrap) return;
+  const row = document.createElement('div');
+  row.className = 'project-row';
+  row.innerHTML = `
+    <div class="grid grid-2">
+      <div class="form-row"><label>Project ID</label><input class="${prefix}-proj-id" placeholder="proj_1" /></div>
+      <div class="form-row" style="display:flex;align-items:flex-end;justify-content:flex-end">
+        <button type="button" class="btn secondary sm" onclick="this.closest('.project-row').remove()">Remove</button>
+      </div>
+    </div>
+    <div class="form-row"><label>projectDetails</label><textarea class="${prefix}-proj-details" rows="4" placeholder="Project Name: ...&#10;Location: ..."></textarea></div>`;
+  wrap.appendChild(row);
+}
+
+function buildProjectPayloadFromForm(prefix) {
+  const mode = document.querySelector(`input[name="${prefix}-project-mode"]:checked`)?.value || 'none';
+  if (mode === 'single') {
+    const pd = $(`${prefix}-project-details`)?.value.trim() || '';
+    const pid = $(`${prefix}-project-id`)?.value.trim() || '';
+    if (!pd) return {};
+    return { project_id: pid || null, projectDetails: pd };
+  }
+  if (mode === 'multi') {
+    const projects = [];
+    document.querySelectorAll(`#${prefix}-multi-project-list .project-row`).forEach(row => {
+      const pd = row.querySelector(`.${prefix}-proj-details`)?.value.trim() || '';
+      const pid = row.querySelector(`.${prefix}-proj-id`)?.value.trim() || '';
+      if (pd) projects.push({ project_id: pid || null, projectDetails: pd });
+    });
+    if (projects.length >= 2) return { projects };
+    if (projects.length === 1) return { project_id: projects[0].project_id, projectDetails: projects[0].projectDetails };
+    return {};
+  }
+  return {};
+}
+
+function contactHasProjectData(c) {
+  return (Array.isArray(c.projects) && c.projects.length > 0)
+    || !!(c.projectDetails || c.project_details)
+    || !!c.project_id;
+}
+
+function applyDefaultProjectsToContacts(contacts, prefix) {
+  const defaults = buildProjectPayloadFromForm(prefix);
+  if (!Object.keys(defaults).length) return contacts;
+  return contacts.map(c => contactHasProjectData(c) ? c : { ...c, ...defaults });
+}
+
+function initProjectPanels() {
+  ['sc', 'bc', 'camp'].forEach(prefix => {
+    document.querySelectorAll(`input[name="${prefix}-project-mode"]`).forEach(el => {
+      el.addEventListener('change', () => {
+        updateProjectModeUI(prefix);
+        if (prefix === 'bc' && batchContacts.length) refreshBatchPreview();
+        if (prefix === 'camp' && campContacts.length) refreshCampPreview();
+      });
+    });
+    const details = $(`${prefix}-project-details`);
+    const pid = $(`${prefix}-project-id`);
+    [details, pid].forEach(el => {
+      if (!el) return;
+      el.addEventListener('input', () => {
+        if (details && el === details) {
+          const preview = $(`${prefix}-project-name-preview`);
+          if (preview) preview.value = extractProjectName(el.value);
+        }
+        if (prefix === 'bc' && batchContacts.length) refreshBatchPreview();
+        if (prefix === 'camp' && campContacts.length) refreshCampPreview();
+      });
+    });
+    const list = $(`${prefix}-multi-project-list`);
+    if (list) {
+      list.addEventListener('input', () => {
+        if (prefix === 'bc' && batchContacts.length) refreshBatchPreview();
+        if (prefix === 'camp' && campContacts.length) refreshCampPreview();
+      });
+    }
+  });
+}
+initProjectPanels();
+
+let callsPage = 1;
+let liveCallsTimer = null;
+let watchedCallPhone = null;
+let batchContacts = [];
+let campContacts = [];
+let charts = {};
+let logsPaused = false;
+let logsTimer = null;
+let settingsCache = {};
+
+const ALL_TOOLS = ['check_availability','book_appointment','end_call','transfer_to_human','send_sms_confirmation','lookup_contact','remember_details','book_calcom','cancel_calcom'];
+
+const VOICE_HTML = `<optgroup label="Female voices">
+<option value="Aoede">Aoede — warm, expressive</option>
+<option value="Achernar">Achernar — soft & clear</option>
+<option value="Autonoe">Autonoe — natural female</option>
+<option value="Callirrhoe">Callirrhoe — gentle female</option>
+<option value="Despina">Despina — bright female</option>
+<option value="Erinome">Erinome — smooth female</option>
+<option value="Gacrux">Gacrux — rich female</option>
+<option value="Kore">Kore — soft, calm</option>
+<option value="Laomedeia">Laomedeia — light female</option>
+<option value="Leda">Leda — clear female ⭐</option>
+<option value="Pulcherrima">Pulcherrima — warm female</option>
+<option value="Sulafat">Sulafat — smooth female</option>
+<option value="Vindemiatrix">Vindemiatrix — professional female</option>
+<option value="Zephyr">Zephyr — airy female</option>
+</optgroup>
+<optgroup label="Male voices">
+<option value="Achird">Achird — clear male</option>
+<option value="Algenib">Algenib — strong male</option>
+<option value="Algieba">Algieba — rich male</option>
+<option value="Alnilam">Alnilam — deep male</option>
+<option value="Charon">Charon — calm, deep</option>
+<option value="Enceladus">Enceladus — expressive male</option>
+<option value="Fenrir">Fenrir — confident male</option>
+<option value="Iapetus">Iapetus — steady male</option>
+<option value="Orus">Orus — warm male</option>
+<option value="Perseus">Perseus — clear male</option>
+<option value="Puck">Puck — bright, energetic</option>
+<option value="Rasalgethi">Rasalgethi — bold male</option>
+<option value="Sadachbia">Sadachbia — natural male</option>
+<option value="Sadaltager">Sadaltager — smooth male</option>
+<option value="Schedar">Schedar — professional male</option>
+<option value="Umbriel">Umbriel — deep, calm</option>
+<option value="Zubenelgenubi">Zubenelgenubi — resonant male</option>
+</optgroup>`;
+
+function toast(msg, type='ok') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + (type==='ok'?'ok':'err');
+  el.textContent = msg;
+  $('toast-wrap').appendChild(el);
+  setTimeout(()=>el.remove(), 4000);
+}
+function showErr(id, msg) { const e=$(id); if(e){e.textContent=msg;} }
+function togglePw(id) { const i=$(id); i.type = i.type==='password'?'text':'password'; }
+
+function getTenantOrgId() {
+  return ($('tenant-org-id')?.value || '').trim();
+}
+function getTenantLeadId() {
+  return ($('tenant-lead-id')?.value || '').trim();
+}
+function getTenantTrunkId() {
+  return ($('tenant-trunk-id')?.value || '').trim();
+}
+function syncTenantKeyToSc() {
+  const k = ($('tenant-gemini-key')?.value || '').trim();
+  if ($('sc-gemini-key')) $('sc-gemini-key').value = k;
+  if ($('top-gemini-key')) $('top-gemini-key').value = k;
+  updateCredsBadge();
+}
+
+function loadTenantContext() {
+  const org = sessionStorage.getItem('activeCallOrgId') || '';
+  const lead = sessionStorage.getItem('activeCallLeadId') || '';
+  const trunk = sessionStorage.getItem('activeCallTrunkId') || '';
+  if($('tenant-org-id')) $('tenant-org-id').value = org;
+  if($('tenant-lead-id')) $('tenant-lead-id').value = lead;
+  if($('tenant-trunk-id')) $('tenant-trunk-id').value = trunk;
+  if (org || lead || trunk) {
+    $('tenant-saved-hint').textContent = `Saved: ${org || '—'} / ${lead || '—'} / ${trunk || '—'}`;
+  }
+}
+function clearTenantContext() {
+  if ($('tenant-org-id')) $('tenant-org-id').value = '';
+  if ($('tenant-lead-id')) $('tenant-lead-id').value = '';
+  if ($('tenant-trunk-id')) $('tenant-trunk-id').value = '';
+  if ($('tenant-gemini-key')) $('tenant-gemini-key').value = '';
+  clearClientCredentials();
+  sessionStorage.removeItem('activeCallOrgId');
+  sessionStorage.removeItem('activeCallLeadId');
+  sessionStorage.removeItem('activeCallTrunkId');
+  sessionStorage.removeItem('activeCallId');
+  $('tenant-saved-hint').textContent = 'Set Org, Lead, Trunk ID, & Gemini Key → applied to all calls';
+  toast('Tenant context & keys cleared');
+  startLiveCallsPollForTab();
+  if (document.querySelector('#tab-calls')?.classList.contains('active')) {
+    loadCalls(1);
+    loadBilling();
+  }
+}
+function saveTenantContext() {
+  const org = getTenantOrgId();
+  const lead = getTenantLeadId();
+  const trunk = getTenantTrunkId();
+  syncTenantKeyToSc();
+  saveClientCredentials();
+  if (org) sessionStorage.setItem('activeCallOrgId', org);
+  else sessionStorage.removeItem('activeCallOrgId');
+  if (lead) sessionStorage.setItem('activeCallLeadId', lead);
+  else sessionStorage.removeItem('activeCallLeadId');
+  if (trunk) sessionStorage.setItem('activeCallTrunkId', trunk);
+  else sessionStorage.removeItem('activeCallTrunkId');
+  const hasKey = !!($('tenant-gemini-key')?.value || '').trim();
+  $('tenant-saved-hint').textContent = (org || lead || trunk || hasKey)
+    ? `Saved: ${org || '—'} / ${lead || '—'} / ${trunk || '—'}${hasKey ? ' · 🔑 Gemini Key OK' : ''}`
+    : 'Set Org, Lead, Trunk ID, & Gemini Key → applied to all calls';
+  toast('Tenant context, trunk ID, & Gemini API key saved');
+  startLiveCallsPollForTab();
+  if (document.querySelector('#tab-calls')?.classList.contains('active')) {
+    loadCalls(1);
+    loadBilling();
+  }
+}
+function optionalTenantFields() {
+  const org = getTenantOrgId();
+  const lead = getTenantLeadId();
+  const trunk = getTenantTrunkId();
+  const out = {};
+  if (org) out.organization_id = org;
+  if (lead) out.lead_id = lead;
+  if (trunk) out.livekit_trunk_id = trunk;
+  return out;
+}
+function applyTenantDefaults(contacts) {
+  const org = getTenantOrgId();
+  const lead = getTenantLeadId();
+  const trunk = getTenantTrunkId();
+  return contacts.map(c => ({
+    ...c,
+    organization_id: (c.organization_id || org || '').trim() || undefined,
+    lead_id: (c.lead_id || lead || '').trim() || undefined,
+    livekit_trunk_id: (c.livekit_trunk_id || c.livekitTrunkId || trunk || '').trim() || undefined,
+  }));
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  $('tab-'+name)?.classList.add('active');
+  document.querySelector(`nav button[data-tab="${name}"]`)?.classList.add('active');
+  if(name==='stats') loadStats();
+  if(name==='campaigns') loadCampaigns();
+  if(name==='agents') loadAgentProfiles();
+  if(name==='prompt') loadPrompt();
+  if(name==='appointments') loadAppointments();
+  if(name==='calls') { loadCalls(callsPage); loadBilling(); startLiveCallsPollForTab(); }
+  if(name==='numbers') loadNumbers();
+  if(name==='single') ensureOutboundNumbersLoaded().catch(() => fillScFromNumberSelect());
+  if(name==='batch' || name==='campaigns') syncParallelSlotLimits();
+  if(name==='crm') { loadCRM(); startLiveCallsPollForTab(); }
+  if(name==='settings') loadSettings();
+  if(name==='logs') loadLogs();
+  if(name==='voice') loadVoice();
+  if(name==='latency') startLatencyPoll(); else stopLatencyPoll();
+  if(name==='setup') loadSetupBillingRate();
+}
+
+document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.tab)));
+
+// ── Voice tab (Cartesia Sonic) ───────────────────────────────────────────
+const VOICE_SOURCES = {dashboard: 'saved on this dashboard', env: 'from .env (CARTESIA_*)', default: 'built-in default'};
+let voiceAudioUrl = null;
+
+function voiceForm() {
+  return {
+    provider: 'cartesia',
+    voice_id: $('v-cvoice').value,
+    model: $('v-cmodel').value,
+    speed: parseFloat($('v-speed').value),
+    volume: parseFloat($('v-volume').value),
+  };
+}
+function showVoiceValues() {
+  for (const id of ['v-speed', 'v-volume'])
+    $(id + '-val').textContent = parseFloat($(id).value).toFixed(2);
+}
+function setVoiceStatus(text, isError) {
+  const el = $('v-status');
+  el.textContent = text || '';
+  el.style.color = isError ? 'var(--danger)' : 'var(--muted)';
+}
+function fillVoice(data) {
+  const o = data.options, v = data.voice;
+  const opts = (sel, values) => { $(sel).innerHTML = values.map(x => `<option value="${x}">${x}</option>`).join(''); };
+  opts('v-language', o.languages); opts('v-cmodel', o.cartesia_models);
+  const group = (lang, label) => `<optgroup label="${label}">` + o.cartesia_voices.filter(x => x.language === lang)
+    .map(x => `<option value="${x.id}">${x.name}</option>`).join('') + '</optgroup>';
+  $('v-cvoice').innerHTML = group('hi', 'Hindi / Hinglish') + group('en', 'Indian English');
+  for (const [id, range] of [['v-speed', o.speed], ['v-volume', o.volume]]) {
+    $(id).min = range[0]; $(id).max = range[1];
+  }
+  $('v-cvoice').value = v.voice_id; $('v-cmodel').value = v.model;
+  $('v-speed').value = v.speed; $('v-volume').value = v.volume;
+  showVoiceValues();
+  $('v-cartesia-warn').classList.toggle('hidden', !!data.cartesia_configured);
+  $('v-source').textContent = `Current voice: ${data.label} — ${VOICE_SOURCES[data.source] || data.source}.`;
+  const banner = $('voice-banner');
+  banner.classList.toggle('hidden', !!data.cascade_enabled);
+  banner.textContent = data.cascade_enabled ? '' :
+    'VOICE_STACK is not "cascade", so calls use Gemini Live and these settings are not used on calls yet. Preview still works.';
+}
+async function loadVoice() {
+  try { fillVoice(await api('/api/voice')); setVoiceStatus(''); }
+  catch (e) { setVoiceStatus('Could not load voice settings: ' + (e.detail || e.message || e), true); }
+}
+async function previewVoice() {
+  const btn = $('v-preview-btn');
+  btn.disabled = true; setVoiceStatus('Generating preview…');
+  try {
+    const body = {...voiceForm(), text: $('v-text').value.trim(), language: $('v-language').value};
+    const r = await fetch('/api/voice/preview', {method: 'POST', headers: authHeaders({'Content-Type': 'application/json'}), body: JSON.stringify(body)});
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.detail || ('HTTP ' + r.status)); }
+    const blob = await r.blob();
+    if (voiceAudioUrl) URL.revokeObjectURL(voiceAudioUrl);
+    voiceAudioUrl = URL.createObjectURL(blob);
+    const audio = $('v-audio');
+    audio.src = voiceAudioUrl; audio.hidden = false;
+    await audio.play().catch(() => {});
+    setVoiceStatus('Preview ready. Not saved yet.');
+  } catch (e) { setVoiceStatus('Preview failed: ' + e.message, true); }
+  finally { btn.disabled = false; }
+}
+async function saveVoice() {
+  try {
+    const res = await apiPost('/api/voice', voiceForm());
+    await loadVoice(); setVoiceStatus(`Saved. Applies ${res.applies} — no restart needed.`);
+  } catch (e) { setVoiceStatus('Save failed: ' + (e.detail || e.message || e), true); }
+}
+async function resetVoice() {
+  try { await apiDel('/api/voice'); await loadVoice(); setVoiceStatus('Reset. The .env voice applies from the next call.'); }
+  catch (e) { setVoiceStatus('Reset failed: ' + (e.detail || e.message || e), true); }
+}
+['v-speed', 'v-volume'].forEach(id => $(id).addEventListener('input', showVoiceValues));
+
+// ── Latency tab (live per-turn timing + transcript) ──────────────────────
+let latTimer = null, latSelected = null, latFollowNewest = true;
+const latEsc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const latSec = v => (typeof v === 'number' ? v.toFixed(2) + 's' : '—');
+function startLatencyPoll() { stopLatencyPoll(); refreshLatency(); latTimer = setInterval(refreshLatency, 2000); }
+function stopLatencyPoll() { if (latTimer) clearInterval(latTimer); latTimer = null; }
+function pickLatencyCall(id) { latSelected = id; latFollowNewest = false; refreshLatency(); }
+async function refreshLatency() {
+  try {
+    const {calls, today} = await api('/api/latency/calls');
+    renderLatencyToday(today);
+    if (latFollowNewest && calls.length) latSelected = calls[0].call_id;
+    $('lat-calls').innerHTML = calls.length ? calls.map(c => `
+      <div class="lat-call ${c.call_id === latSelected ? 'active' : ''}" onclick="pickLatencyCall('${latEsc(c.call_id)}')">
+        <div><strong>${latEsc(c.lead || 'Unknown')}</strong> ${c.phone_tail ? '···' + latEsc(c.phone_tail) : ''} ${c.ended ? '' : '<span class="badge" style="background:rgba(0,255,136,.15);color:var(--accent)">live</span>'}</div>
+        <div class="sub">${c.started ? new Date(c.started * 1000).toLocaleTimeString() : ''} · ${c.turns} turns · avg ${latSec(c.avg.total)}</div>
+      </div>`).join('') : '<p style="color:var(--muted)">No calls yet. Place a call and it appears here.</p>';
+    if (latSelected) renderLatencyCall(await api('/api/latency/calls/' + encodeURIComponent(latSelected)));
+  } catch (e) { $('lat-detail').innerHTML = `<p style="color:var(--danger)">Could not load latency: ${latEsc(e.detail || e.message || e)}</p>`; }
+}
+const latNum = v => (typeof v === 'number' ? v.toLocaleString('en-IN') : '—');
+function renderLatencyToday(t) {
+  if (!t) return;
+  const tile = (k, v) => `<div class="lat-stat"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+  $('lat-today').innerHTML = tile('Calls', latNum(t.calls)) + tile('Avg reply', latSec(t.avg_reply)) +
+    tile('Mercury tokens', latNum(t.llm_total)) + tile('Cartesia chars', latNum(t.tts_chars)) +
+    tile('Sarvam audio', t.stt_audio_s ? (t.stt_audio_s / 60).toFixed(1) + ' min' : '—') +
+    tile('Replies', latNum(t.turns));
+}
+// Minimal SVG line chart: one y-axis, recessive grid, 2px lines, 8px hover markers,
+// crosshair + tooltip listing every series at the hovered x. series: [{name, color, pts:[{x,y}]}]
+function latLineChart(el, {title, sub, series, yFmt, xFmt, xTip, target, legend}) {
+  const W = Math.max(320, el.clientWidth || 600), H = 220, m = {l: 44, r: 16, t: 10, b: 26};
+  const all = series.flatMap(s => s.pts);
+  if (!all.length) { el.innerHTML = `<h3>${title}</h3><div class="sub">No data yet — fills in as the call runs.</div>`; return; }
+  const xs = all.map(p => p.x), x0 = Math.min(...xs), x1 = Math.max(...xs, x0 + 1);
+  // Round tick step (1, 2, 2.5 or 5 × 10^n) so the axis reads 0, 0.5, 1.0 … not 0.96, 1.92 …
+  const rawMax = Math.max(...all.map(p => p.y), target || 0) * 1.1 || 1;
+  const mag = Math.pow(10, Math.floor(Math.log10(rawMax / 4)));
+  const tickStep = [1, 2, 2.5, 5, 10].map(f => f * mag).find(st => rawMax / st <= 5);
+  const yMax = Math.ceil(rawMax / tickStep) * tickStep;
+  const X = x => m.l + (x - x0) / (x1 - x0) * (W - m.l - m.r), Y = y => H - m.b - y / yMax * (H - m.t - m.b);
+  const ticks = Array.from({length: Math.round(yMax / tickStep) + 1}, (_, i) => i * tickStep);
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${title}">`;
+  for (const t of ticks) svg += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(t)}" y2="${Y(t)}" stroke="var(--border)" stroke-width="1"/>` +
+    `<text x="${m.l - 6}" y="${Y(t) + 3}" text-anchor="end" font-size="10" fill="var(--muted)">${yFmt(t)}</text>`;
+  const xt = [...new Set(xs)].sort((a, b) => a - b), step = Math.max(1, Math.ceil(xt.length / 8));
+  xt.forEach((x, i) => { if (i % step === 0 || i === xt.length - 1)
+    svg += `<text x="${X(x)}" y="${H - 8}" text-anchor="middle" font-size="10" fill="var(--muted)">${xFmt(x)}</text>`; });
+  if (target) svg += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(target)}" y2="${Y(target)}" stroke="var(--text2)" stroke-width="1" stroke-dasharray="4 4"/>` +
+    `<text x="${m.l + 4}" y="${Y(target) - 4}" text-anchor="start" font-size="10" fill="var(--text2)">target ${target}s</text>`;
+  for (const s of series) {
+    if (!s.pts.length) continue;
+    svg += `<path d="${s.pts.map((p, i) => (i ? 'L' : 'M') + X(p.x).toFixed(1) + ' ' + Y(p.y).toFixed(1)).join(' ')}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    if (s.label) { const p = s.pts[s.pts.length - 1];
+      svg += `<text x="${Math.min(X(p.x) + 6, W - m.r)}" y="${Y(p.y) - 6}" font-size="10" fill="var(--text)" text-anchor="${X(p.x) > W - 60 ? 'end' : 'start'}">${s.label(p)}</text>`; }
+  }
+  svg += `<line class="xh" x1="0" x2="0" y1="${m.t}" y2="${H - m.b}" stroke="var(--text2)" stroke-width="1" visibility="hidden"/>`;
+  series.forEach((s, i) => svg += `<circle class="dot" data-i="${i}" r="4" fill="${s.color}" stroke="var(--card)" stroke-width="2" visibility="hidden"/>`);
+  svg += `<rect x="${m.l}" y="${m.t}" width="${W - m.l - m.r}" height="${H - m.t - m.b}" fill="transparent"/></svg>`;
+  const leg = legend ? `<div class="legend">${series.map(s => `<span><i style="background:${s.color}"></i>${s.name}</span>`).join('')}</div>` : '';
+  el.innerHTML = `<h3>${title}</h3><div class="sub">${sub}</div>${leg}${svg}<div class="lat-tip"></div>`;
+  const svgEl = el.querySelector('svg'), tip = el.querySelector('.lat-tip'), xh = svgEl.querySelector('.xh');
+  const dots = [...svgEl.querySelectorAll('.dot')];
+  const hide = () => { tip.style.display = 'none'; xh.setAttribute('visibility', 'hidden'); dots.forEach(d => d.setAttribute('visibility', 'hidden')); };
+  svgEl.addEventListener('mouseleave', hide);
+  svgEl.addEventListener('mousemove', e => {
+    const r = svgEl.getBoundingClientRect(), mx = (e.clientX - r.left) * W / r.width;
+    const x = xt.reduce((a, b) => Math.abs(X(b) - mx) < Math.abs(X(a) - mx) ? b : a);
+    xh.setAttribute('x1', X(x)); xh.setAttribute('x2', X(x)); xh.setAttribute('visibility', 'visible');
+    let rows = '';
+    series.forEach((s, i) => { const p = s.pts.find(q => q.x === x);
+      if (p) { dots[i].setAttribute('cx', X(p.x)); dots[i].setAttribute('cy', Y(p.y)); dots[i].setAttribute('visibility', 'visible');
+        rows += `<div><span style="background:${s.color}"></span>${s.name}: <b>${yFmt(p.y, true)}</b></div>`; }
+      else dots[i].setAttribute('visibility', 'hidden'); });
+    tip.innerHTML = `<div><b>${xTip(x)}</b></div>${rows}`;
+    tip.style.display = 'block';
+    const left = X(x) / W * r.width + 12;
+    tip.style.left = Math.min(left, r.width - tip.offsetWidth - 4) + 'px';
+    // Keep the tooltip inside the plot area, next to the pointer.
+    const box = el.getBoundingClientRect(), svgTop = r.top - box.top;
+    const want = svgTop + (e.clientY - r.top) - tip.offsetHeight / 2;
+    tip.style.top = Math.max(svgTop, Math.min(want, svgTop + r.height - tip.offsetHeight)) + 'px';
+  });
+}
+function renderLatencyCharts(ev, target) {
+  const turns = ev.filter(e => e.type === 'turn');
+  const pts = key => turns.map((t, i) => ({x: i + 1, y: t[key]})).filter(p => typeof p.y === 'number');
+  latLineChart($('lat-chart-reply'), {
+    title: 'Reply time per turn', sub: 'Lead stops → agent starts speaking, split by model. Dashed line = target.',
+    legend: true, target,
+    series: [
+      {name: 'Total', color: 'var(--series-1)', pts: pts('total'), label: p => p.y.toFixed(2) + 's'},
+      {name: 'Turn end + STT (Sarvam)', color: 'var(--series-2)', pts: pts('eou')},
+      {name: 'LLM (Mercury)', color: 'var(--series-3)', pts: pts('llm')},
+      {name: 'TTS (Cartesia)', color: 'var(--series-4)', pts: pts('tts')},
+    ],
+    yFmt: (v, exact) => exact ? v.toFixed(2) + 's' : (+v.toFixed(2)) + 's',
+    xFmt: x => x, xTip: x => `Reply ${x}`,
+  });
+  const t0 = (ev.find(e => e.type === 'call') || ev[0] || {}).t || 0;
+  let run = 0;
+  const tok = ev.filter(e => e.type === 'usage' && e.kind === 'llm').map(e => ({x: Math.round((e.t - t0) * 10) / 10, y: (run += e.total)}));
+  const mmss = x => `${Math.floor(x / 60)}:${String(Math.round(x % 60)).padStart(2, '0')}`;
+  latLineChart($('lat-chart-tokens'), {
+    title: 'Mercury tokens (running total)', sub: 'Prompt + reply tokens used so far in this call, from LiveKit usage metrics.',
+    legend: false,
+    series: [{name: 'Tokens', color: 'var(--series-1)', pts: tok, label: p => latNum(p.y)}],
+    yFmt: (v, exact) => exact ? latNum(Math.round(v)) : (v >= 1000 ? (v / 1000).toFixed(0) + 'k' : Math.round(v)),
+    xFmt: mmss, xTip: x => `${mmss(x)} into the call`,
+  });
+}
+function renderLatencyCall(data) {
+  const ev = data.events, s = data.summary;
+  const info = ev.find(e => e.type === 'call') || {}, m = info.models || {}, target = info.target || 1.5;
+  const cls = v => (typeof v === 'number' ? (v > target ? 'lat-slow' : 'lat-ok') : '');
+  const stat = (k, v, c = '') => `<div class="lat-stat"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`;
+  let html = `<div style="color:var(--muted);font-size:12px;margin-bottom:8px">STT: ${latEsc(m.stt || m.realtime || '—')} · LLM: ${latEsc(m.llm || '—')} · TTS: ${latEsc(m.tts || '—')} · target ${target}s</div>
+    <div class="lat-stats">
+      ${stat('Average reply', latSec(s.avg.total), cls(s.avg.total))}
+      ${stat('Turn end + STT', latSec(s.avg.eou))}
+      ${stat('LLM (Mercury)', latSec(s.avg.llm))}
+      ${stat('TTS (Cartesia)', latSec(s.avg.tts))}
+      ${stat('Slowest reply', latSec(s.max_total), cls(s.max_total))}
+      ${stat('Replies over target', `${s.slow}/${s.turns}`)}
+      ${stat('Greeting first word', latSec(s.greeting_first_word))}
+      ${stat('Lead waits: first reply', latSec(s.heard && s.heard.first), cls(s.heard && s.heard.first))}
+      ${stat('Lead waits: average', latSec(s.heard && s.heard.avg), cls(s.heard && s.heard.avg))}
+    </div>
+    <div class="lat-stats">
+      ${stat('Mercury tokens', latNum(s.usage.llm_total))}
+      ${stat('Prompt / reply tokens', `${latNum(s.usage.llm_prompt)} / ${latNum(s.usage.llm_completion)}`)}
+      ${stat('Mercury requests', latNum(s.usage.llm_requests))}
+      ${stat('Cartesia characters', latNum(s.usage.tts_chars))}
+      ${stat('Cartesia audio', latSec(s.usage.tts_audio_s))}
+      ${stat('Sarvam audio heard', latSec(s.usage.stt_audio_s))}
+    </div>
+    <div class="lat-chart" id="lat-chart-reply"></div>
+    <div class="lat-chart" id="lat-chart-tokens"></div>`;
+  const maxTotal = Math.max(target, ...ev.filter(e => e.type === 'turn').map(e => e.total));
+  for (const e of ev) {
+    if (e.type === 'message') {
+      html += `<div class="lat-msg ${e.role}"><div class="who">${e.role === 'lead' ? 'Lead' : 'Agent'} · ${new Date(e.t * 1000).toLocaleTimeString()}${e.interrupted ? ' · interrupted' : ''}</div>${latEsc(e.text)}</div>`;
+    } else if (e.type === 'turn') {
+      const w = v => `${Math.max(0, (v || 0) / maxTotal * 100)}%`;
+      html += `<div class="lat-turn">reply in <span class="${cls(e.total)}">${latSec(e.total)}</span> = turn end ${latSec(e.eou)}${typeof e.stt === 'number' ? ` (STT ${latSec(e.stt)})` : ''} + LLM ${latSec(e.llm)} + TTS ${latSec(e.tts)}
+        <div class="lat-bar"><span class="lat-eou" style="width:${w(e.eou)}"></span><span class="lat-llm" style="width:${w(e.llm)}"></span><span class="lat-tts" style="width:${w(e.tts)}"></span></div></div>`;
+    } else if (e.type === 'heard') {
+      html += `<div class="lat-turn" style="color:var(--muted)">lead waited <span class="${cls(e.s)}">${latSec(e.s)}</span> for this reply</div>`;
+    } else if (e.type === 'greeting') {
+      html += `<div class="lat-turn">greeting: first word ${latSec(e.first_word)} after pickup</div>`;
+    } else if (e.type === 'end') {
+      html += `<div style="text-align:center;color:var(--muted);font-size:11px;margin-top:8px">call ended ${new Date(e.t * 1000).toLocaleTimeString()}</div>`;
+    }
+  }
+  const box = $('lat-detail'), atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
+  // Rebuild only when the call changed, so an open chart tooltip is not wiped every 2s.
+  const sig = data.call_id + ':' + ev.length;
+  if (box.dataset.sig === sig) return;
+  box.dataset.sig = sig;
+  box.innerHTML = html;
+  renderLatencyCharts(ev, target);
+  if (atBottom && !s.ended) box.lastElementChild?.scrollIntoView({block: 'nearest'});
+}
+
+// Stats
+async function loadStats() {
+  try {
+    const d = await api('/api/stats');
+    $('kpi-total').textContent = d.total_calls;
+    $('kpi-booked').textContent = d.booked;
+    $('kpi-notint').textContent = d.not_interested;
+    $('kpi-rate').textContent = d.booking_rate_percent + '%';
+    $('kpi-dur').textContent = d.avg_duration_seconds;
+    _renderCharts(d);
+    loadLiveConfig();
+  } catch(e) { console.error(e); }
+}
+
+async function loadLiveConfig() {
+  try {
+    const [s, p] = await Promise.all([api('/api/settings'), api('/api/prompt')]);
+    const chips = [];
+    chips.push(`<span class="chip ${s.GEMINI_MODEL?.configured?'ok':'no'}">Model: ${s.GEMINI_MODEL?.value||'—'}</span>`);
+    chips.push(`<span class="chip ${s.GEMINI_TTS_VOICE?.configured?'ok':'no'}">Voice: ${s.GEMINI_TTS_VOICE?.value||'Leda'}</span>`);
+    chips.push(`<span class="chip ${s.LIVEKIT_URL?.configured?'ok':'no'}">LiveKit</span>`);
+    chips.push(`<span class="chip ${s.OUTBOUND_TRUNK_ID?.configured?'ok':'no'}">SIP Trunk</span>`);
+    chips.push(`<span class="chip ${p.is_custom?'ok':'no'}">Prompt: ${p.is_custom?'Custom':'Default'}</span>`);
+    $('live-config').innerHTML = chips.join('');
+  } catch(e) {}
+}
+
+function _mkChart(id, type, data, options) {
+  if(charts[id]) charts[id].destroy();
+  charts[id] = new Chart($(id), {type, data, options: Object.assign({responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#aaa'}}},scales:type!=='doughnut'?{x:{ticks:{color:'#aaa'},grid:{color:'#252525'}},y:{ticks:{color:'#aaa'},grid:{color:'#252525'}}}:{}}, options||{})});
+}
+
+function _renderCharts(d) {
+  const oc = d.outcomes||{};
+  _mkChart('chart-outcomes','doughnut',{labels:Object.keys(oc),datasets:[{data:Object.values(oc),backgroundColor:['#00ff88','#ff4d4d','#ffaa00','#00ccff','#888','#666']}]},{plugins:{title:{display:true,text:'Outcomes',color:'#e0e0e0'}}});
+  const tl = d.timeline||[];
+  _mkChart('chart-timeline','line',{labels:tl.map(t=>t.date.slice(5)),datasets:[{label:'Calls',data:tl.map(t=>t.count),borderColor:'#00ccff',backgroundColor:'rgba(0,204,255,.1)',fill:true,tension:.3}]},{plugins:{title:{display:true,text:'14-Day Timeline',color:'#e0e0e0'}}});
+  const db = d.duration_by_outcome||{};
+  _mkChart('chart-duration','bar',{labels:Object.keys(db),datasets:[{label:'Avg sec',data:Object.values(db).map(v=>Math.round(v)),backgroundColor:'#00ff88'}]},{plugins:{title:{display:true,text:'Avg Duration by Outcome',color:'#e0e0e0'}}});
+}
+
+// Single Call
+$('sc-custom-prompt-cb').addEventListener('change', e => $('sc-prompt-wrap').classList.toggle('hidden', !e.target.checked));
+function collectSingleCallContacts() {
+  const contacts = [];
+  const seen = new Set();
+  const add = (nameId, phoneId) => {
+    const phone = normalizeIndianPhone($(phoneId).value);
+    if (!phone || seen.has(phone)) return;
+    seen.add(phone);
+    const name = ($(nameId).value || '').trim() || 'there';
+    contacts.push({ phone, lead_name: name });
+  };
+  add('sc-name-1', 'sc-phone-1');
+  add('sc-name-2', 'sc-phone-2');
+  return contacts;
+}
+
+function togglePw(id) {
+  const el = $(id);
+  if (!el) return;
+  el.type = el.type === 'password' ? 'text' : 'password';
+}
+
+function toggleTenantCredsDrawer() {
+  const drawer = $('tenant-creds-drawer');
+  if (drawer) drawer.classList.toggle('hidden');
+}
+
+function updateCredsBadge() {
+  const creds = getClientCredentialsPayload();
+  const badge = $('tenant-creds-badge');
+  if (!badge) return;
+  if (creds && creds.gemini_api_key && creds.vobiz) {
+    badge.innerHTML = '🟢 (Ready)';
+    badge.style.color = 'var(--accent)';
+  } else {
+    badge.innerHTML = '🔴 (Set Keys)';
+    badge.style.color = 'var(--danger)';
+  }
+}
+
+function syncTopCredsToSc() {
+  const mapping = [
+    ['top-gemini-key', 'sc-gemini-key'],
+    ['top-vobiz-caller-id', 'sc-vobiz-caller-id'],
+    ['top-vobiz-user', 'sc-vobiz-user'],
+    ['top-vobiz-pass', 'sc-vobiz-pass'],
+    ['top-vobiz-domain', 'sc-vobiz-domain'],
+    ['top-lk-url', 'sc-lk-url'],
+    ['top-lk-key', 'sc-lk-key'],
+    ['top-lk-secret', 'sc-lk-secret'],
+  ];
+  mapping.forEach(([topId, scId]) => {
+    if ($(topId) && $(scId)) $(scId).value = $(topId).value;
+  });
+  updateCredsBadge();
+}
+
+function syncScCredsToTop() {
+  const mapping = [
+    ['sc-gemini-key', 'top-gemini-key'],
+    ['sc-vobiz-caller-id', 'top-vobiz-caller-id'],
+    ['sc-vobiz-user', 'top-vobiz-user'],
+    ['sc-vobiz-pass', 'top-vobiz-pass'],
+    ['sc-vobiz-domain', 'top-vobiz-domain'],
+    ['sc-lk-url', 'top-lk-url'],
+    ['sc-lk-key', 'top-lk-key'],
+    ['sc-lk-secret', 'top-lk-secret'],
+  ];
+  mapping.forEach(([scId, topId]) => {
+    if ($(scId) && $(topId)) $(topId).value = $(scId).value;
+  });
+  updateCredsBadge();
+}
+
+function saveTopClientCredentials() {
+  syncTopCredsToSc();
+  saveClientCredentials();
+  toggleTenantCredsDrawer();
+}
+
+function saveClientCredentials() {
+  const creds = {
+    gemini_api_key: ($('sc-gemini-key')?.value || $('top-gemini-key')?.value || '').trim(),
+    vobiz: {
+      username: ($('sc-vobiz-user')?.value || $('top-vobiz-user')?.value || '').trim(),
+      password: ($('sc-vobiz-pass')?.value || $('top-vobiz-pass')?.value || '').trim(),
+      domain: ($('sc-vobiz-domain')?.value || $('top-vobiz-domain')?.value || 'sip.vobiz.ai').trim(),
+      caller_id: ($('sc-vobiz-caller-id')?.value || $('top-vobiz-caller-id')?.value || '').trim(),
+    },
+    livekit: {
+      url: ($('sc-lk-url')?.value || $('top-lk-url')?.value || '').trim(),
+      api_key: ($('sc-lk-key')?.value || $('top-lk-key')?.value || '').trim(),
+      api_secret: ($('sc-lk-secret')?.value || $('top-lk-secret')?.value || '').trim(),
+    }
+  };
+  localStorage.setItem('outbound_client_creds', JSON.stringify(creds));
+  updateCredsBadge();
+  toast('Client credentials saved across all dashboard tabs');
+}
+
+function loadClientCredentials() {
+  try {
+    const raw = localStorage.getItem('outbound_client_creds');
+    if (!raw) { updateCredsBadge(); return; }
+    const creds = JSON.parse(raw);
+    const setVal = (id, val) => { if ($(id) && val != null) $(id).value = val; };
+    if (creds.gemini_api_key) {
+      setVal('sc-gemini-key', creds.gemini_api_key);
+      setVal('top-gemini-key', creds.gemini_api_key);
+      setVal('tenant-gemini-key', creds.gemini_api_key);
+    }
+    if (creds.vobiz) {
+      setVal('sc-vobiz-user', creds.vobiz.username);
+      setVal('top-vobiz-user', creds.vobiz.username);
+      setVal('sc-vobiz-pass', creds.vobiz.password);
+      setVal('top-vobiz-pass', creds.vobiz.password);
+      setVal('sc-vobiz-domain', creds.vobiz.domain);
+      setVal('top-vobiz-domain', creds.vobiz.domain);
+      setVal('sc-vobiz-caller-id', creds.vobiz.caller_id);
+      setVal('top-vobiz-caller-id', creds.vobiz.caller_id);
+    }
+    if (creds.livekit) {
+      setVal('sc-lk-url', creds.livekit.url);
+      setVal('top-lk-url', creds.livekit.url);
+      setVal('sc-lk-key', creds.livekit.api_key);
+      setVal('top-lk-key', creds.livekit.api_key);
+      setVal('sc-lk-secret', creds.livekit.api_secret);
+      setVal('top-lk-secret', creds.livekit.api_secret);
+    }
+    updateCredsBadge();
+  } catch (_) {}
+}
+
+function clearClientCredentials() {
+  localStorage.removeItem('outbound_client_creds');
+  ['tenant-gemini-key','sc-gemini-key','top-gemini-key','sc-vobiz-user','top-vobiz-user','sc-vobiz-pass','top-vobiz-pass',
+   'sc-vobiz-caller-id','top-vobiz-caller-id','sc-lk-url','top-lk-url','sc-lk-key','top-lk-key','sc-lk-secret','top-lk-secret'].forEach(id => {
+    if ($(id)) $(id).value = '';
+  });
+  updateCredsBadge();
+  toast('Client credentials cleared');
+}
+
+function getClientCredentialsPayload() {
+  const gemini_api_key = ($('tenant-gemini-key')?.value || $('top-gemini-key')?.value || $('sc-gemini-key')?.value || '').trim();
+  const vUser = ($('sc-vobiz-user')?.value || $('top-vobiz-user')?.value || '').trim();
+  const vPass = ($('sc-vobiz-pass')?.value || $('top-vobiz-pass')?.value || '').trim();
+  const vDom = ($('sc-vobiz-domain')?.value || $('top-vobiz-domain')?.value || 'sip.vobiz.ai').trim();
+  const vCaller = ($('sc-vobiz-caller-id')?.value || $('top-vobiz-caller-id')?.value || '').trim();
+  const lkUrl = ($('sc-lk-url')?.value || $('top-lk-url')?.value || '').trim();
+  const lkKey = ($('sc-lk-key')?.value || $('top-lk-key')?.value || '').trim();
+  const lkSec = ($('sc-lk-secret')?.value || $('top-lk-secret')?.value || '').trim();
+
+  const creds = {};
+  if (gemini_api_key) creds.gemini_api_key = gemini_api_key;
+  if (vUser || vPass || vDom || vCaller) {
+    creds.vobiz = {};
+    if (vUser) creds.vobiz.username = vUser;
+    if (vPass) creds.vobiz.password = vPass;
+    if (vDom) creds.vobiz.domain = vDom;
+    if (vCaller) creds.vobiz.caller_id = vCaller;
+  }
+  if (lkUrl || lkKey || lkSec) {
+    creds.livekit = {};
+    if (lkUrl) creds.livekit.url = lkUrl;
+    if (lkKey) creds.livekit.api_key = lkKey;
+    if (lkSec) creds.livekit.api_secret = lkSec;
+  }
+  return Object.keys(creds).length ? creds : null;
+}
+
+$('call-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  showErr('sc-err','');
+  const contacts = collectSingleCallContacts();
+  if (!contacts.length) { showErr('sc-err', 'Enter at least one valid phone number in Contact 1'); return; }
+
+  const clientCreds = getClientCredentialsPayload();
+  const vobizCallerId = clientCreds?.vobiz?.caller_id || '';
+  const fromNumber = ($('sc-from-number')?.value || vobizCallerId || '').trim();
+  if (fromNumber) {
+    contacts.forEach(c => { c.from_number = fromNumber; });
+  }
+  const body = {
+    contacts,
+    ...(fromNumber ? { from_number: fromNumber } : {}),
+    ...optionalTenantFields(),
+    business_name: $('sc-biz').value,
+    service_type: $('sc-service').value,
+    agent_profile_id: $('sc-agent-profile').value || null,
+    simultaneous: true,
+    ...buildProjectPayloadFromForm('sc'),
+  };
+  if (clientCreds) {
+    body.credentials = clientCreds;
+  }
+  if($('sc-custom-prompt-cb').checked) body.system_prompt = $('sc-prompt').value;
+  try {
+    const r = await apiPost('/api/call', body);
+    const first = r.id ? r : (Array.isArray(r.calls) && r.calls.length ? r.calls[0] : null);
+    if (first?.id) {
+      sessionStorage.setItem('activeCallId', first.id);
+      watchedCallPhone = first.phone;
+    }
+    if (contacts.length === 1) {
+      toast(`Call dispatched to ${contacts[0].lead_name} (${contacts[0].phone})`);
+    } else {
+      const names = contacts.map(c => `${c.lead_name} (${c.phone})`).join(', ');
+      const keys = r.gemini_key_pool?.total_keys || 1;
+      const keyNote = keys < contacts.length
+        ? ` — only ${keys} Gemini key(s); add more keys for true parallel ring`
+        : '';
+      toast(`Simultaneous dial (${r.ok || contacts.length}/${r.total || contacts.length}): ${names}${keyNote}`);
+    }
+    startLiveCallsPoll();
+  } catch(err) { showErr('sc-err', err.detail||JSON.stringify(err)); toast('Dispatch failed','err'); }
+});
+
+// Batch
+function normalizeIndianPhone(phone) {
+  if (!phone) return '';
+  const raw = String(phone).trim();
+  let digits = raw.replace(/\D/g, '');
+  if (!digits) return raw;
+  while (digits.startsWith('0') && digits.length > 10) digits = digits.slice(1);
+  if (raw.startsWith('+')) return digits.length >= 12 ? '+' + digits : raw;
+  if (digits.length === 10) digits = '91' + digits;
+  if (digits.length === 12 && digits.startsWith('91')) return '+' + digits;
+  return raw;
+}
+
+function parseCSV(text) {
+  // Strip UTF-8 BOM if present (common in Excel-exported CSV)
+  const clean = text.replace(/^\uFEFF/, '').trim();
+  const lines = clean.split(/\r?\n/);
+  if (lines.length < 2) return [];
+  const headers = lines[0].toLowerCase().split(',').map(h=>h.trim());
+  return lines.slice(1).filter(l=>l.trim()).map(line => {
+    const vals = line.split(',').map(v=>v.trim());
+    const obj = {};
+    headers.forEach((h,i)=>obj[h]=vals[i]||'');
+    const contact = {
+      phone: normalizeIndianPhone(obj.phone||obj.phonenumber||obj.mobile||obj.phone_number||obj['phone number']||obj['mobile number']||''),
+      lead_name: obj.lead_name||obj.name||obj.leadname||obj['lead name']||obj['customer name']||obj['contact name']||'there',
+      organization_id: obj.organization_id||obj.org_id||'',
+      lead_id: obj.lead_id||'',
+      business_name: obj.business_name||obj.business||'our company',
+      service_type: obj.service_type||obj.service||'our service',
+      from_number: normalizeIndianPhone(
+        obj.from_number||obj.caller_id||obj.calling_number||obj.sip_number||obj['from number']||obj['caller id']||obj['calling number']||''
+      ) || '',
+    };
+    const projectsJson = obj.projects_json || obj.projects || '';
+    if (projectsJson) {
+      try {
+        const parsed = JSON.parse(projectsJson);
+        if (Array.isArray(parsed) && parsed.length) contact.projects = parsed;
+      } catch(e) { /* ignore invalid JSON */ }
+    }
+    const pd = obj.projectdetails || obj.project_details || '';
+    const pid = obj.project_id || '';
+    if (!contact.projects && pd) {
+      contact.project_id = pid;
+      contact.projectDetails = pd;
+    } else if (!contact.projects && pid) {
+      contact.project_id = pid;
+    }
+    return contact;
+  }).filter(c=>c.phone);
+}
+
+function _csvParseResult(contacts, previewId, startBtnId, listKey) {
+  let html;
+  if (!contacts.length) {
+    html = `<p style="color:var(--err,#ef4444);font-size:13px;line-height:1.8">
+      0 contacts parsed. Possible reasons:<br>
+      &bull; CSV mein <strong>phone</strong> column nahi — accepted names: <code>phone</code>, <code>phonenumber</code>, <code>mobile</code>, <code>phone_number</code><br>
+      &bull; Phone column empty hai<br>
+      &bull; CSV sirf header row hai, data nahi
+    </p>`;
+    $(previewId).innerHTML = html;
+    if (startBtnId) $(startBtnId)?.classList.toggle('hidden', true);
+    toast('0 contacts — check CSV format', 'err');
+    return;
+  }
+  ensureOutboundNumbersLoaded().then(() => {
+    html = `<p style="color:var(--muted);font-size:12px;margin-bottom:6px">
+      Phone numbers without +91 are auto-converted (e.g. <code>9876543210</code> → <code>+919876543210</code>).
+      Assign a <strong>Calling Number</strong> (caller ID) per lead for parallel dials — each simultaneous call needs a different free DID.
+    </p>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;align-items:center">
+      <button type="button" class="btn secondary sm" onclick="autoAssignCallingNumbers('${listKey}')">Auto-assign unique calling numbers</button>
+      <button type="button" class="btn secondary sm" onclick="clearCallingNumbers('${listKey}')">Clear calling numbers</button>
+      <span style="font-size:11px;color:var(--muted)">${(outboundNumbersCache||[]).filter(n=>n.status==='free').length} free DID(s) in pool</span>
+    </div>` + renderContactTable(contacts, listKey);
+    $(previewId).innerHTML = html;
+    if (startBtnId) $(startBtnId)?.classList.toggle('hidden', false);
+    toast(`${contacts.length} contacts parsed — pick calling numbers for parallel dials`);
+  }).catch(() => {
+    html = `<p style="color:var(--muted);font-size:12px;margin-bottom:6px">
+      Could not load phone pool — calling-number dropdowns may be empty. Sync numbers under <strong>Numbers</strong> tab.
+    </p>` + renderContactTable(contacts, listKey);
+    $(previewId).innerHTML = html;
+    if (startBtnId) $(startBtnId)?.classList.toggle('hidden', false);
+    toast(`${contacts.length} contacts parsed`);
+  });
+}
+
+let outboundNumbersCache = [];
+
+async function ensureOutboundNumbersLoaded(force) {
+  if (!force && outboundNumbersCache.length) {
+    fillScFromNumberSelect();
+    return outboundNumbersCache;
+  }
+  try {
+    const org = (typeof getTenantOrgId === 'function' ? getTenantOrgId() : '') || '';
+    const url = org ? `/api/numbers/status?organization_id=${encodeURIComponent(org)}` : '/api/numbers/status';
+    const d = await api(url);
+    outboundNumbersCache = (d.numbers || []).filter(n => n.e164 && n.status !== 'disabled');
+  } catch (e) {
+    outboundNumbersCache = [];
+    fillScFromNumberSelect();
+    throw e;
+  }
+  fillScFromNumberSelect();
+  return outboundNumbersCache;
+}
+
+function fillScFromNumberSelect() {
+  const sel = $('sc-from-number');
+  if (!sel) return;
+  const prev = (sel.value || '').trim();
+  let opts = `<option value="">— Select from number —</option>`;
+  const free = outboundNumbersCache.filter(n => n.status === 'free');
+  const busy = outboundNumbersCache.filter(n => n.status === 'busy');
+  free.forEach(n => {
+    const label = esc(n.organization_id ? `${n.e164} (free · ${n.organization_id})` : `${n.e164} (free)`);
+    opts += `<option value="${esc(n.e164)}">${label}</option>`;
+  });
+  busy.forEach(n => {
+    opts += `<option value="${esc(n.e164)}" disabled>${esc(n.e164)} (busy)</option>`;
+  });
+  if (prev && !outboundNumbersCache.some(n => n.e164 === prev)) {
+    opts += `<option value="${esc(prev)}">${esc(prev)}</option>`;
+  }
+  sel.innerHTML = opts;
+  if (prev && [...sel.options].some(o => o.value === prev && !o.disabled)) sel.value = prev;
+}
+
+function callingNumberOptionsHtml(selected) {
+  const sel = (selected || '').trim();
+  let opts = `<option value="">Auto (pool picks free DID)</option>`;
+  const free = outboundNumbersCache.filter(n => n.status === 'free');
+  const busy = outboundNumbersCache.filter(n => n.status === 'busy');
+  free.forEach(n => {
+    const label = esc(n.organization_id ? `${n.e164} (free · ${n.organization_id})` : `${n.e164} (free)`);
+    opts += `<option value="${esc(n.e164)}" ${sel === n.e164 ? 'selected' : ''}>${label}</option>`;
+  });
+  busy.forEach(n => {
+    opts += `<option value="${esc(n.e164)}" ${sel === n.e164 ? 'selected' : ''} disabled>${esc(n.e164)} (busy)</option>`;
+  });
+  if (sel && !outboundNumbersCache.some(n => n.e164 === sel)) {
+    opts += `<option value="${sel}" selected>${sel} (from CSV)</option>`;
+  }
+  return opts;
+}
+
+function setContactCallingNumber(listKey, index, value) {
+  const list = listKey === 'camp' ? campContacts : batchContacts;
+  if (!list[index]) return;
+  list[index].from_number = (value || '').trim();
+}
+
+function autoAssignCallingNumbers(listKey) {
+  const list = listKey === 'camp' ? campContacts : batchContacts;
+  if (!list.length) return;
+  const free = outboundNumbersCache.filter(n => n.status === 'free').map(n => n.e164);
+  if (!free.length) {
+    toast('No free calling numbers in pool — sync under Numbers tab', 'err');
+    return;
+  }
+  list.forEach((c, i) => { c.from_number = free[i % free.length]; });
+  if (listKey === 'camp') refreshCampPreview();
+  else refreshBatchPreview();
+  const unique = Math.min(list.length, free.length);
+  toast(`Assigned ${unique} unique DID(s) across ${list.length} lead(s)` +
+    (list.length > free.length ? ` — only ${free.length} free; extras will reuse` : ''));
+}
+
+function clearCallingNumbers(listKey) {
+  const list = listKey === 'camp' ? campContacts : batchContacts;
+  list.forEach(c => { c.from_number = ''; });
+  if (listKey === 'camp') refreshCampPreview();
+  else refreshBatchPreview();
+  toast('Calling numbers cleared (auto pool pick)');
+}
+
+async function syncParallelSlotLimits() {
+  let phoneCap = 0;
+  let keyCap = 0;
+  try {
+    const org = (typeof getTenantOrgId === 'function' ? getTenantOrgId() : '') || '';
+    const url = org ? `/api/numbers/status?organization_id=${encodeURIComponent(org)}` : '/api/numbers/status';
+    const d = await api(url);
+    phoneCap = (d.free || 0) + (d.busy || 0);
+  } catch (_) {}
+  try {
+    const kp = await api('/api/gemini/key-pool');
+    keyCap = Number(kp.total_keys || kp.total || 0) || 0;
+  } catch (_) {}
+  const caps = [phoneCap, keyCap].filter(n => n > 0);
+  const maxSlots = caps.length ? Math.min(...caps) : 20;
+  ['bc-parallel', 'camp-parallel'].forEach(id => {
+    const el = $(id);
+    if (!el) return;
+    el.max = String(maxSlots);
+    el.min = '1';
+    let v = parseInt(el.value, 10);
+    if (!Number.isFinite(v) || v < 1) v = Math.min(2, maxSlots);
+    if (v > maxSlots) v = maxSlots;
+    el.value = String(v);
+  });
+  const hint =
+    `Max parallel right now: <strong>${maxSlots}</strong>` +
+    ` (phone pool DIDs=${phoneCap || '—'}, Gemini keys=${keyCap || '—'}). ` +
+    `With ${phoneCap || 2} caller-ID number(s) you can run at most ${phoneCap || 2} call(s) at once.`;
+  const bcHint = $('bc-parallel-hint');
+  if (bcHint) {
+    bcHint.innerHTML =
+      `Up to N leads dial at once. When one is <strong>busy / no-answer / ends</strong>, that slot ` +
+      `dials the <strong>next queued lead</strong>. ${hint}`;
+  }
+  const campHint = $('camp-parallel-hint');
+  if (campHint) campHint.innerHTML = hint;
+  return maxSlots;
+}
+
+function parseBatchCSV() {
+  const f = $('bc-csv').files[0];
+  if(!f){toast('Select a CSV file','err');return;}
+  const reader = new FileReader();
+  reader.onload = e => {
+    batchContacts = parseCSV(e.target.result);
+    _csvParseResult(applyDefaultProjectsToContacts(batchContacts, 'bc'), 'bc-preview', 'bc-start', 'bc');
+  };
+  reader.readAsText(f);
+}
+
+function refreshBatchPreview() {
+  if (!batchContacts.length) return;
+  const contacts = applyDefaultProjectsToContacts(batchContacts, 'bc');
+  $('bc-preview').innerHTML = `<p style="color:var(--muted);font-size:12px;margin-bottom:6px">
+      Assign a <strong>Calling Number</strong> per lead for parallel dials.
+    </p>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;align-items:center">
+      <button type="button" class="btn secondary sm" onclick="autoAssignCallingNumbers('bc')">Auto-assign unique calling numbers</button>
+      <button type="button" class="btn secondary sm" onclick="clearCallingNumbers('bc')">Clear calling numbers</button>
+      <span style="font-size:11px;color:var(--muted)">${(outboundNumbersCache||[]).filter(n=>n.status==='free').length} free DID(s) in pool</span>
+    </div>` + renderContactTable(contacts, 'bc');
+}
+
+function refreshCampPreview() {
+  if (!campContacts.length) return;
+  const contacts = applyDefaultProjectsToContacts(campContacts, 'camp');
+  $('camp-preview').innerHTML = `<p style="color:var(--muted);font-size:12px;margin-bottom:6px">
+      Assign a <strong>Calling Number</strong> per lead for parallel dials.
+    </p>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;align-items:center">
+      <button type="button" class="btn secondary sm" onclick="autoAssignCallingNumbers('camp')">Auto-assign unique calling numbers</button>
+      <button type="button" class="btn secondary sm" onclick="clearCallingNumbers('camp')">Clear calling numbers</button>
+      <span style="font-size:11px;color:var(--muted)">${(outboundNumbersCache||[]).filter(n=>n.status==='free').length} free DID(s) in pool</span>
+    </div>` + renderContactTable(contacts, 'camp');
+}
+
+function renderContactTable(contacts, listKey) {
+  if(!contacts.length) return '<p>No contacts parsed.</p>';
+  const editable = listKey === 'bc' || listKey === 'camp';
+  let h = `<table><tr><th>Phone</th><th>Lead</th><th>Calling Number (caller ID)</th><th>Org ID</th><th>Lead ID</th><th>Projects</th><th>Business</th><th>Service</th></tr>`;
+  contacts.forEach((c, i) => {
+    const callerCell = editable
+      ? `<select style="min-width:180px;font-size:12px" onchange="setContactCallingNumber('${listKey}',${i},this.value)">${callingNumberOptionsHtml(c.from_number)}</select>`
+      : esc(c.from_number || '—');
+    h += `<tr><td>${esc(c.phone)}</td><td>${esc(c.lead_name)}</td><td>${callerCell}</td><td>${esc(c.organization_id||'—')}</td><td>${esc(c.lead_id||'—')}</td><td>${contactProjectSummary(c)}</td><td>${esc(c.business_name)}</td><td>${esc(c.service_type)}</td></tr>`;
+  });
+  return h+'</table>';
+}
+
+async function startBatch() {
+  if(!batchContacts.length){toast('Parse CSV first','err');return;}
+  await syncParallelSlotLimits();
+  const clientCreds = getClientCredentialsPayload();
+  const body = {
+    contacts: applyTenantDefaults(applyDefaultProjectsToContacts(batchContacts, 'bc')),
+    call_delay_seconds: parseInt($('bc-delay').value)||0,
+    max_parallel_calls: parseInt($('bc-parallel').value)||1,
+    queue_advance: true,
+    agent_profile_id: $('bc-agent-profile').value||null,
+  };
+  if (clientCreds) body.credentials = clientCreds;
+  $('bc-progress-wrap').classList.remove('hidden');
+  $('bc-progress').style.width = '100%';
+  try {
+    const res = await apiPost('/api/batch-call', body);
+    const slots = res.max_parallel_calls ?? body.max_parallel_calls;
+    const note = res.note || '';
+    toast(`Batch queue: ${res.total} leads, ${slots} parallel slot(s)` + (note ? ` — ${note}` : ''));
+  } catch(e) {
+    toast('Batch failed: '+(e.detail||e.message||''),'err');
+    $('bc-progress').style.width = '0%';
+  }
+}
+
+// Campaigns
+function parseCampCSV() {
+  const f = $('camp-csv').files[0];
+  if(!f){toast('Select CSV','err');return;}
+  const reader = new FileReader();
+  reader.onload = e => {
+    campContacts = parseCSV(e.target.result);
+    _csvParseResult(applyDefaultProjectsToContacts(campContacts, 'camp'), 'camp-preview', null, 'camp');
+  };
+  reader.readAsText(f);
+}
+$('camp-custom-prompt-cb').addEventListener('change', e => $('camp-prompt-wrap').classList.toggle('hidden', !e.target.checked));
+
+async function createCampaign() {
+  if(!campContacts.length){toast('Parse CSV first','err');return;}
+  await syncParallelSlotLimits();
+  const clientCreds = getClientCredentialsPayload();
+  const body = {
+    name: $('camp-name').value||'Campaign',
+    contacts: applyTenantDefaults(applyDefaultProjectsToContacts(campContacts, 'camp')),
+    schedule_type: $('camp-schedule').value,
+    schedule_time: $('camp-time').value,
+    call_delay_seconds: parseInt($('camp-delay').value)||0,
+    max_parallel_calls: parseInt($('camp-parallel').value)||1,
+    queue_advance: true, // campaigns always FIFO — capped by phone pool DIDs
+    agent_profile_id: $('camp-agent-profile').value||null,
+  };
+  if (clientCreds) body.credentials = clientCreds;
+  if($('camp-custom-prompt-cb').checked) body.system_prompt = $('camp-prompt').value;
+  try {
+    const res = await apiPost('/api/campaigns', body);
+    const slots = res.max_parallel_calls ?? body.max_parallel_calls;
+    toast(`Campaign saved — ${slots} parallel slot(s), FIFO queue (next lead when a DID frees)`);
+    loadCampaigns();
+  } catch(e) { toast('Campaign failed: '+(e.detail||''),'err'); }
+}
+
+async function loadCampaigns() {
+  try {
+    const camps = await api('/api/campaigns');
+    if(!Array.isArray(camps)) { $('camp-list').innerHTML='<p>No campaigns table — run supabase_schema.sql</p>'; return; }
+    const running = camps.find(c => c.status === 'running');
+    window._runningCampaign = running || null;
+    let h = '';
+    if (running) {
+      h += `<p style="color:var(--warn);font-size:13px;margin-bottom:10px">▶ Campaign running: <strong>${running.name}</strong> — only one campaign can dial at a time.</p>`;
+    }
+    h += '<table><tr><th>Name</th><th>Schedule</th><th>Parallel</th><th>Auto-next</th><th>Status</th><th>Dispatched</th><th>Failed</th><th>Last Run</th><th>Actions</th></tr>';
+    camps.forEach(c => {
+      const autoNext = c.queue_advance === false ? 'Off' : 'On';
+      const isRunning = c.status === 'running';
+      const blockStart = !!running && !isRunning;
+      const startBtn = isRunning
+        ? `<button class="btn sm secondary" disabled>Running…</button>`
+        : blockStart
+          ? `<button class="btn sm secondary" onclick="notifyCampaignBusy(${jsa(c.name)})">Start Calls</button>`
+          : `<button class="btn sm" onclick="runCampaign(${jsa(c.id)},${jsa(c.name)})">Start Calls</button>`;
+      h += `<tr><td>${esc(c.name)}</td><td>${esc(c.schedule_type)} ${esc(c.schedule_time||'')}</td><td>${c.max_parallel_calls||5}</td><td><span class="badge ${autoNext==='On'?'booked':'unknown'}">${autoNext}</span></td><td><span class="badge ${esc(c.status)}">${esc(c.status)}</span></td><td>${c.total_dispatched||0}</td><td>${c.total_failed||0}</td><td>${(c.last_run_at||'—').slice(0,16)}</td><td>
+        ${startBtn}
+        ${c.status==='active'?`<button class="btn sm secondary" onclick="toggleCampaignStatus(${jsa(c.id)},'paused')">Pause</button>`: (c.status==='paused' || c.status==='completed') ? `<button class="btn sm secondary" onclick="toggleCampaignStatus(${jsa(c.id)},'active')">Resume</button>` : ''}
+        <button class="btn sm danger" ${isRunning?'disabled':''} onclick="deleteCampaign(${jsa(c.id)},${jsa(c.name)})">Delete</button>
+      </td></tr>`;
+    });
+    $('camp-list').innerHTML = h + (camps.length?'</table>':'<p>No campaigns yet.</p>');
+  } catch(e) { $('camp-list').innerHTML='<p>Error loading campaigns</p>'; }
+}
+
+function notifyCampaignBusy(triedName) {
+  const running = window._runningCampaign;
+  const runningName = (running && running.name) ? running.name : 'another campaign';
+  const msg =
+    `Campaign is already running.\n\n` +
+    `Currently running: "${runningName}"\n` +
+    (triedName ? `You tried to start: "${triedName}"\n\n` : '\n') +
+    `Only one campaign can dial at a time. Please wait until the current campaign finishes, then try again.`;
+  alert(msg);
+  toast(`Campaign running: ${runningName} — wait until it finishes`, 'err');
+}
+
+window.notifyCampaignBusy = notifyCampaignBusy;
+
+window.runCampaign = async (id, name) => {
+  // Fresh check before start
+  try {
+    const camps = await api('/api/campaigns');
+    const running = Array.isArray(camps) ? camps.find(c => c.status === 'running') : null;
+    window._runningCampaign = running || null;
+    if (running && running.id !== id) {
+      notifyCampaignBusy(name);
+      return;
+    }
+  } catch (_) {}
+
+  if (!confirm(`Start calls for campaign "${name}"?\n\nOnly one campaign can run at a time.`)) return;
+  try {
+    await apiPost(`/api/campaigns/${id}/run`, {});
+    toast(`Calls started: ${name}`);
+    loadCampaigns();
+  } catch (e) {
+    const detail = (e && (e.detail || e.message)) || '';
+    const detailText = typeof detail === 'string' ? detail : JSON.stringify(detail);
+    if (String(detailText).toLowerCase().includes('one campaign') ||
+        String(detailText).toLowerCase().includes('already running') ||
+        String(detailText).toLowerCase().includes('currently running')) {
+      // Popup when API rejects because another campaign is live
+      alert(
+        `Campaign is already running.\n\n${detailText}\n\n` +
+        `Only one campaign can dial at a time. Wait until it finishes.`
+      );
+      toast(detailText || 'Campaign already running', 'err');
+    } else {
+      toast('Start calls failed: ' + (detailText || 'unknown error'), 'err');
+    }
+    loadCampaigns();
+  }
+};
+window.toggleCampaignStatus = async (id,s) => { await apiPatch(`/api/campaigns/${id}/status`,{status:s}); toast('Status updated'); loadCampaigns(); };
+window.deleteCampaign = async (id,name) => { if(!confirm(`Delete campaign "${name}"?`))return; await apiDel(`/api/campaigns/${id}`); toast('Deleted'); loadCampaigns(); };
+
+// Agent Profiles
+function populateVoiceSelects() {
+  ['agent-voice','s-GEMINI_TTS_VOICE'].forEach(id => { if($(id)) $(id).innerHTML = VOICE_HTML; });
+}
+
+async function loadAgentProfiles() {
+  populateVoiceSelects();
+  try {
+    const raw = await api('/api/agent-profiles');
+    const profiles = Array.isArray(raw) ? raw : [];
+    ['sc-agent-profile','bc-agent-profile','camp-agent-profile'].forEach(selId => {
+      const sel = $(selId);
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">Default</option>' + profiles.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}${p.is_default?' ★':''}</option>`).join('');
+      if(cur) sel.value = cur;
+    });
+    let h = '<table><tr><th>Name</th><th>Voice</th><th>Model</th><th>Default</th><th>Actions</th></tr>';
+    profiles.forEach(p => {
+      h += `<tr><td>${esc(p.name)}</td><td>${esc(p.voice)}</td><td>${esc(p.model)}</td><td>${p.is_default?'★':''}</td><td>
+        <button class="btn sm" onclick="editAgentProfile(${jsa(p.id)})">Edit</button>
+        <button class="btn sm secondary" onclick="setDefaultAgentProfile(${jsa(p.id)},${jsa(p.name)})">★ Default</button>
+        <button class="btn sm danger" onclick="deleteAgentProfile(${jsa(p.id)},${jsa(p.name)})">Delete</button>
+      </td></tr>`;
+    });
+    $('agent-list').innerHTML = h + (profiles.length?'</table>':'<p>No profiles yet.</p>');
+  } catch(e) { $('agent-list').innerHTML='<p>Run supabase_schema.sql first</p>'; }
+}
+
+window.saveAgentProfile = async () => {
+  const id = $('agent-edit-id').value;
+  const toolsRaw = $('agent-tools').value.trim();
+  let enabled_tools = '[]';
+  if(toolsRaw) enabled_tools = JSON.stringify(toolsRaw.split(',').map(t=>t.trim()).filter(Boolean));
+  const body = {name:$('agent-name').value, voice:$('agent-voice').value, model:$('agent-model').value, system_prompt:$('agent-prompt').value, enabled_tools, is_default:$('agent-default').checked};
+  try {
+    if(id) { await api(`/api/agent-profiles/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); toast('Profile updated'); }
+    else { await apiPost('/api/agent-profiles', body); toast('Profile created'); }
+    resetAgentForm(); loadAgentProfiles();
+  } catch(e) { toast('Save failed','err'); }
+};
+
+window.editAgentProfile = async (id) => {
+  const p = await api(`/api/agent-profiles/${id}`);
+  $('agent-edit-id').value = id;
+  $('agent-form-title').textContent = 'Edit Agent Profile';
+  $('agent-name').value = p.name;
+  $('agent-voice').value = p.voice;
+  $('agent-model').value = p.model;
+  $('agent-prompt').value = p.system_prompt||'';
+  $('agent-default').checked = !!p.is_default;
+  try { const t=JSON.parse(p.enabled_tools||'[]'); $('agent-tools').value = t.join(', '); } catch(e){}
+  switchTab('agents');
+};
+
+window.deleteAgentProfile = async (id,name) => { if(!confirm(`Delete "${name}"?`))return; await apiDel(`/api/agent-profiles/${id}`); toast('Deleted'); loadAgentProfiles(); };
+window.setDefaultAgentProfile = async (id,name) => { await apiPost(`/api/agent-profiles/${id}/set-default`,{}); toast(`${name} is default`); loadAgentProfiles(); };
+window.resetAgentForm = () => { $('agent-edit-id').value=''; $('agent-form-title').textContent='Create Agent Profile'; $('agent-name').value=''; $('agent-prompt').value=''; $('agent-tools').value=''; $('agent-default').checked=false; };
+
+// Prompt
+async function loadPrompt() {
+  try {
+    const d = await api('/api/prompt');
+    $('global-prompt').value = d.prompt;
+    const src = d.source === 'dashboard' ? 'dashboard (custom)'
+      : (d.source === 'env' ? 'Azure SYSTEM_PROMPT (locked)' : 'code default');
+    $('prompt-chars').textContent = `${d.prompt.length} chars · ${src}`;
+    const locked = !!d.locked_by_env;
+    $('global-prompt').disabled = locked;
+    $('prompt-save-btn').disabled = locked;
+    $('prompt-reset-btn').disabled = locked;
+    $('prompt-source-hint').textContent = locked
+      ? 'Prompt is locked by Azure SYSTEM_PROMPT. Clear that env var on the Container App to edit here.'
+      : 'Edit + Save → next calls use this prompt. Reset → agent falls back to prompts.py code default.';
+  } catch (e) {
+    $('prompt-source-hint').textContent = 'Could not load prompt: ' + (e.message || e);
+  }
+}
+$('global-prompt').addEventListener('input', () => {
+  $('prompt-chars').textContent = $('global-prompt').value.length + ' chars';
+});
+window.savePrompt = async () => {
+  try {
+    await apiPost('/api/prompt', { prompt: $('global-prompt').value });
+    toast('Prompt saved — agent will use this on the next call');
+    loadPrompt();
+  } catch (e) {
+    toast('Save failed: ' + (e.detail || e.message || e));
+  }
+};
+window.resetPrompt = async () => {
+  try {
+    const d = await apiDel('/api/prompt');
+    $('global-prompt').value = d.prompt;
+    toast('Reset to code default');
+    loadPrompt();
+  } catch (e) {
+    toast('Reset failed: ' + (e.detail || e.message || e));
+  }
+};
+
+// Appointments
+async function loadAppointments() {
+  const date = $('appt-date-filter').value;
+  const url = date ? `/api/appointments?date=${date}` : '/api/appointments';
+  const rows = await api(url);
+  let h = '<table><tr><th>Name</th><th>Phone</th><th>Date</th><th>Time</th><th>Service</th><th>Status</th><th></th></tr>';
+  rows.forEach(a => {
+    h += `<tr><td>${esc(a.name)}</td><td>${esc(a.phone)}</td><td>${esc(a.date)}</td><td>${esc(a.time)}</td><td>${esc(a.service)}</td><td><span class="badge ${esc(a.status)}">${esc(a.status)}</span></td>
+      <td>${a.status==='booked'?`<button class="btn sm danger" onclick="cancelAppointment(${jsa(a.id)})">Cancel</button>`:''}</td></tr>`;
+  });
+  $('appt-list').innerHTML = h + (rows.length?'</table>':'<p>No appointments.</p>');
+}
+window.cancelAppointment = async (id) => { if(!confirm('Cancel appointment?'))return; await apiDel(`/api/appointments/${id}`); toast('Cancelled'); loadAppointments(); };
+
+// Call Logs
+function renderTranscriptChat(lines, containerId) {
+  const el = $(containerId);
+  if(!el) return;
+  if(!lines.length) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:12px">Waiting for speech…</p>';
+    return;
+  }
+  el.innerHTML = lines.map(line => {
+    const role = line.role === 'user' ? 'user' : 'agent';
+    const label = role === 'user' ? 'Lead' : 'Agent';
+    return `<div class="tx-bubble ${role}"><div class="tx-label">${label}</div>${line.text.replace(/</g,'&lt;')}</div>`;
+  }).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+function isLiveCallStatus(status) {
+  const s = (status || '').toLowerCase();
+  return s === 'ringing' || s === 'in_progress';
+}
+
+function callStatusLabel(status) {
+  const s = (status || '').toLowerCase();
+  if (s === 'ringing') return 'Ringing';
+  if (s === 'in_progress') return 'In Progress';
+  if (s === 'queued') return 'Queued';
+  return status || '—';
+}
+
+/** Live calls: Ringing / In Progress. Completed rows: booked, callback_requested, etc. */
+function callOutcomeDisplay(call) {
+  const status = (call.status || '').toLowerCase();
+  const outcome = (call.outcome || '').toLowerCase();
+  if (isLiveCallStatus(status)) {
+    return { label: callStatusLabel(status), badge: status };
+  }
+  if (isLiveCallStatus(outcome)) {
+    return { label: callStatusLabel(outcome), badge: outcome };
+  }
+  const label = call.outcome || '?';
+  return { label, badge: outcome || 'unknown' };
+}
+
+function parseTranscriptLines(call) {
+  try {
+    const lines = JSON.parse(call.transcript_json || '[]');
+    if (lines.length) return lines;
+  } catch(e) {}
+  const raw = (call.live_transcript || '').trim();
+  if (!raw) return [];
+  return raw.split('\n').filter(Boolean).map(line => {
+    if (line.startsWith('Lead:')) return { role: 'user', text: line.slice(5).trim() };
+    if (line.startsWith('Agent:')) return { role: 'agent', text: line.slice(6).trim() };
+    return { role: 'agent', text: line };
+  });
+}
+
+function updateLiveTranscriptUI(calls) {
+  const active = watchedCallPhone
+    ? calls.find(c => c.phone_number === watchedCallPhone && isLiveCallStatus(c.status))
+    : calls[0];
+  const sidebar = $('live-sidebar');
+  if(!active) {
+    sidebar.classList.add('hidden');
+    if(!calls.length) {
+      $('single-live-meta').textContent = 'No active call — dispatch a call to see live text here';
+      renderTranscriptChat([], 'single-live-chat');
+    }
+    return;
+  }
+  const lines = parseTranscriptLines(active);
+  const statusTxt = callStatusLabel(active.status);
+  const meta = `${statusTxt} · ${active.phone_number} · ${active.lead_name || 'Lead'} · started ${(active.timestamp||'').slice(11,16)}`;
+  $('single-live-meta').textContent = meta;
+  if (active.status === 'ringing' && !lines.length) {
+    renderTranscriptChat([{ role: 'agent', text: '📞 Ringing… waiting for answer' }], 'single-live-chat');
+  } else {
+    renderTranscriptChat(lines, 'single-live-chat');
+  }
+  $('live-sidebar-meta').textContent = meta;
+  if (active.status === 'ringing' && !lines.length) {
+    renderTranscriptChat([{ role: 'agent', text: '📞 Ringing… waiting for answer' }], 'live-sidebar-chat');
+  } else {
+    renderTranscriptChat(lines, 'live-sidebar-chat');
+  }
+  sidebar.classList.remove('hidden');
+}
+
+function stopLiveCallsPoll() {
+  if(liveCallsTimer) { clearInterval(liveCallsTimer); liveCallsTimer = null; }
+}
+
+function startLiveCallsPoll() {
+  stopLiveCallsPoll();
+  pollLiveTranscript();
+  liveCallsTimer = setInterval(pollLiveTranscript, 2000);
+}
+
+async function fetchActiveCalls() {
+  const orgId = getTenantOrgId();
+  const leadId = getTenantLeadId();
+  const params = [];
+  if (orgId) params.push(`organization_id=${encodeURIComponent(orgId)}`);
+  if (leadId) params.push(`lead_id=${encodeURIComponent(leadId)}`);
+  const url = params.length ? `/api/calls/active?${params.join('&')}` : '/api/calls/active';
+  return api(url);
+}
+
+function renderActiveCallsTable(rows, listId, cardId) {
+  const listEl = $(listId);
+  const cardEl = cardId ? $(cardId) : null;
+  if (!listEl) return;
+  if (!rows.length) {
+    listEl.innerHTML = '<p style="color:var(--muted);font-size:13px">No active calls right now.</p>';
+    if (cardEl && cardId === 'live-calls-card') cardEl.classList.add('hidden');
+    return;
+  }
+  if (cardEl && cardId === 'live-calls-card') cardEl.classList.remove('hidden');
+  let h = '<table><tr><th>Status</th><th>Phone</th><th>Lead</th><th>Org ID</th><th>Lead ID</th><th>Started</th><th>Live Transcript</th></tr>';
+  rows.forEach(c => {
+    const preview = c.status === 'ringing'
+      ? 'Ringing…'
+      : (c.live_transcript || 'Waiting…').slice(-120);
+    const callId = c.id || '';
+    const st = (c.status || 'ringing');
+    h += `<tr><td><span class="badge ${st}">${callStatusLabel(st)}</span></td><td>${esc(c.phone_number)}</td><td>${esc(c.lead_name || '—')}</td><td>${esc(c.organization_id || '—')}</td><td>${esc(c.lead_id || '—')}</td><td>${esc((c.timestamp || '').slice(11, 16))}</td>
+      <td><button class="btn sm" onclick="watchCall(${jsa(c.phone_number)},${jsa(callId)})">Watch</button> <span style="font-size:11px;color:var(--muted)">${esc(preview)}</span></td></tr>`;
+  });
+  listEl.innerHTML = h + '</table>';
+}
+
+async function pollLiveTranscript() {
+  try {
+    let rows = await fetchActiveCalls();
+    const callId = sessionStorage.getItem('activeCallId') || '';
+    if (!rows.length && callId) {
+      const t = await api(`/api/calls/${callId}/transcript`);
+      if (isLiveCallStatus(t.status)) {
+        rows = [{
+          id: callId,
+          phone_number: watchedCallPhone || '—',
+          lead_name: 'Lead',
+          timestamp: new Date().toISOString(),
+          status: t.status,
+          transcript_json: t.transcript_json,
+          live_transcript: t.live_transcript,
+        }];
+      }
+    }
+    updateLiveTranscriptUI(rows);
+    renderActiveCallsTable(rows, 'live-calls-list', 'live-calls-card');
+    renderActiveCallsTable(rows, 'crm-active-calls-list', 'crm-active-calls-card');
+  } catch(e) { /* ignore */ }
+}
+
+window.watchCall = (phone, callId) => {
+  watchedCallPhone = phone;
+  switchTab('single');
+  viewTranscript(callId);
+  startLiveCallsPoll();
+};
+
+function stopLiveCallsPollOnTabLeave() {
+  // Keep polling globally so sidebar stays live on any tab
+}
+
+function startLiveCallsPollForTab() {
+  startLiveCallsPoll();
+}
+
+window.viewTranscript = async (callId) => {
+  const panel = $('transcript-panel');
+  const body = $('transcript-body');
+  body.innerHTML = '<p style="color:var(--muted)">Loading…</p>';
+  panel.classList.remove('hidden');
+  panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+
+  let t;
+  try { t = await api(`/api/calls/${callId}/transcript`); }
+  catch(e) { body.innerHTML = '<p style="color:var(--danger)">Failed to load transcript.</p>'; return; }
+
+  let lines = [];
+  try { lines = JSON.parse(t.transcript_json || '[]'); } catch(e) {}
+
+  if(lines.length) {
+    const header = isLiveCallStatus(t.status)
+      ? (t.status === 'ringing'
+          ? '<p style="color:var(--warn);font-size:12px;margin-bottom:10px">📞 RINGING — waiting for answer</p>'
+          : '<p style="color:var(--accent);font-size:12px;margin-bottom:10px">🔴 LIVE — auto-refreshes every 3s</p>')
+      : '<p style="color:var(--text2);font-size:12px;margin-bottom:10px">Call completed</p>';
+    body.innerHTML = renderPropertyCard(t.property_data, 'Lead requirements (this call)') + header + lines.map(line => {
+      const role = line.role === 'user' ? 'user' : 'agent';
+      const label = role === 'user' ? '👤 Lead' : '🤖 Agent';
+      return `<div class="tx-bubble ${role}"><div class="tx-label">${label}</div>${(line.text||'').replace(/</g,'&lt;')}</div>`;
+    }).join('');
+    body.scrollTop = body.scrollHeight;
+  } else if(t.live_transcript) {
+    body.innerHTML = renderPropertyCard(t.property_data, 'Lead requirements (this call)') + '<pre style="white-space:pre-wrap;font-size:12px">' + t.live_transcript.replace(/</g,'&lt;') + '</pre>';
+  } else if(t.final_transcript) {
+    body.innerHTML = renderPropertyCard(t.property_data, 'Lead requirements (this call)') + '<p style="color:var(--text2);font-size:12px;margin-bottom:8px">Deepgram transcript:</p><pre style="white-space:pre-wrap;font-size:12px">' + t.final_transcript.replace(/</g,'&lt;') + '</pre>';
+  } else if(t.property_data && Object.keys(parsePropertyData(t.property_data)).length) {
+    body.innerHTML = renderPropertyCard(t.property_data, 'Lead requirements (this call)') + '<p style="color:var(--muted);font-size:12px">Transcript not available yet.</p>';
+  } else {
+    body.innerHTML = '<p style="color:var(--muted);font-size:12px">Transcript not available for this call.<br>Make sure Supabase schema is updated and a call has been made after the latest deploy.</p>';
+  }
+
+  if(isLiveCallStatus(t.status)) {
+    setTimeout(() => {
+      if(!panel.classList.contains('hidden')) viewTranscript(callId);
+    }, 3000);
+  }
+};
+
+function formatMoney(amount, currency='INR') {
+  const n = Number(amount);
+  if (!Number.isFinite(n)) return '—';
+  const raw = String(currency || 'INR').trim().toUpperCase();
+  const cur = /^[A-Z]{3}$/.test(raw) ? raw : 'INR';
+  const sym = cur === 'INR' ? '₹' : (cur + ' ');
+  return sym + n.toFixed(2);
+}
+function formatTalkTime(sec) {
+  const s = Math.max(0, Number(sec) || 0);
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return m ? `${m}m ${r}s` : `${r}s`;
+}
+async function loadBilling() {
+  const orgId = getTenantOrgId();
+  const leadId = getTenantLeadId();
+  let url = '/api/billing';
+  const qs = [];
+  if (orgId) qs.push(`organization_id=${encodeURIComponent(orgId)}`);
+  if (leadId) qs.push(`lead_id=${encodeURIComponent(leadId)}`);
+  if (qs.length) url += '?' + qs.join('&');
+  try {
+    const b = await api(url);
+    const cur = b.currency || 'INR';
+    const live = b.rate_source === 'vobiz_cdr';
+    $('bill-rate').textContent = (b.rate_per_minute == null || b.rate_per_minute === '')
+      ? '—'
+      : formatMoney(b.rate_per_minute, cur);
+    $('bill-rate-lbl').textContent = live ? 'Avg rate / min (Vobiz)' : 'Rate / min';
+    $('bill-calls').textContent = b.total_calls ?? '—';
+    $('bill-mins').textContent = Number(b.billable_minutes ?? 0).toFixed(2);
+    $('bill-dur').textContent = formatTalkTime(b.total_duration_seconds);
+    $('bill-cost').textContent = formatMoney(b.estimated_cost, cur);
+    $('bill-cost-lbl').textContent = live ? 'Vobiz cost' : 'Cost';
+    const matched = b.vobiz_matched_calls || 0;
+    const unmatched = b.vobiz_unmatched_calls || 0;
+    let src = live
+      ? `live Vobiz CDR (${matched} matched${unmatched ? ', ' + unmatched + ' pending' : ''})`
+      : (b.vobiz_api_configured
+          ? `waiting for CDR match (${matched} matched / ${unmatched} pending)`
+          : 'set VOBIZ_AUTH_ID + TOKEN for live cost');
+    if (b.vobiz_cdrs_fetched != null) src += ` · fetched ${b.vobiz_cdrs_fetched} CDRs`;
+    if (b.vobiz_fetch_error) src += ` · fetch error: ${b.vobiz_fetch_error}`;
+    $('billing-scope-hint').textContent = orgId
+      ? `Org ${orgId}${leadId ? ' · lead ' + leadId : ''} · ${src}`
+      : `All orgs · ${src}`;
+  } catch (e) {
+    $('billing-scope-hint').textContent = 'Billing unavailable: ' + (e.message || e);
+  }
+}
+async function loadSetupBillingRate() {
+  const el = $('setup-vobiz-rate');
+  if (!el) return;
+  try {
+    const r = await api('/api/billing/rate');
+    if (r.rate_source === 'vobiz_account' && r.rate_per_minute != null) {
+      el.textContent = formatMoney(r.rate_per_minute, r.currency || 'INR') + ' (live account)';
+    } else if (r.rate_per_minute != null) {
+      el.textContent = formatMoney(r.rate_per_minute, r.currency || 'INR') + ' (fallback)';
+    } else {
+      el.textContent = 'live CDR cost per call (no fixed rate)';
+    }
+  } catch (_) {
+    el.textContent = 'live CDR when Auth ID/Token set';
+  }
+}
+async function loadGeminiTokenKpis() {
+  const orgId = getTenantOrgId();
+  let url = '/api/gemini/tokens';
+  if (orgId) url += `?organization_id=${encodeURIComponent(orgId)}`;
+  try {
+    const d = await api(url);
+    const pool = d.gemini_key_pool || {};
+    $('gk-available').textContent = pool.available != null ? pool.available : '—';
+    $('gk-leased').textContent = pool.leased != null ? pool.leased : '—';
+    $('gk-tokens-total').textContent = Number(d.tokens_total || 0).toLocaleString();
+    const tpm = d.tokens_per_minute;
+    $('gk-tokens-per-min').textContent = (tpm == null || tpm === '') ? '—' : Number(tpm).toLocaleString(undefined, { maximumFractionDigits: 1 });
+    $('gk-tokens-inout').textContent =
+      `${Number(d.tokens_in || 0).toLocaleString()} / ${Number(d.tokens_out || 0).toLocaleString()}`;
+    const totalKeys = pool.total_keys != null ? pool.total_keys : '?';
+    const talkMin = Number(d.duration_seconds || 0) / 60;
+    $('gk-hint').textContent =
+      `Pool ${pool.backend || 'memory'}: ${pool.available ?? '—'}/${totalKeys} free · ` +
+      `${d.calls_with_key || 0} calls with key · talk ${talkMin.toFixed(1)} min · ` +
+      `tok/min = total ÷ minutes (transcript estimate)`;
+  } catch (e) {
+    $('gk-hint').textContent = 'Gemini KPIs unavailable (run supabase_schema.sql for token columns).';
+  }
+}
+async function loadCalls(page=1) {
+  callsPage = Math.max(1, page);
+  let url = `/api/calls?page=${callsPage}&limit=20`;
+  const orgId = getTenantOrgId();
+  const leadId = getTenantLeadId();
+  if (orgId) url += `&organization_id=${encodeURIComponent(orgId)}`;
+  if (leadId) url += `&lead_id=${encodeURIComponent(leadId)}`;
+  loadGeminiTokenKpis();
+  const rows = await api(url);
+  let h = '<table><tr><th>Phone</th><th>Lead</th><th>Org ID</th><th>Lead ID</th><th>Project</th><th>Budget</th><th>City</th><th>BHK</th><th>Outcome</th><th>Key</th><th>Tokens</th><th>Tok/min</th><th>Duration</th><th>Billable</th><th>Cost</th><th>Time</th><th>Recording</th><th>Transcript</th><th>Notes</th></tr>';
+  rows.forEach(c => {
+    const cur = c.currency || 'INR';
+    const mins = Number(c.billable_minutes);
+    const minsLabel = Number.isFinite(mins) ? mins.toFixed(2) + 'm' : '—';
+    const costLabel = formatMoney(c.estimated_cost, cur) + (c.rate_source === 'vobiz_cdr' ? ' <span style="color:var(--accent);font-size:10px">Vobiz</span>' : '');
+    const durLabel = c.vobiz_billsec != null ? `${c.duration_seconds||0}s <span style="color:var(--text2);font-size:10px">(bill ${c.vobiz_billsec}s)</span>` : `${c.duration_seconds||0}s`;
+    const keyLabel = esc(c.gemini_key_slot || '—');
+    const tokTotal = Number(c.gemini_tokens_total || 0);
+    const tokIn = Number(c.gemini_tokens_in || 0);
+    const tokOut = Number(c.gemini_tokens_out || 0);
+    const tokLabel = tokTotal
+      ? `${tokTotal.toLocaleString()} <span style="color:var(--text2);font-size:10px">(${tokIn}/${tokOut})</span>`
+      : '—';
+    const tpm = c.gemini_tokens_per_minute;
+    const tpmLabel = (tpm == null || tpm === '') ? '—' : Number(tpm).toLocaleString(undefined, { maximumFractionDigits: 1 });
+    const oc = callOutcomeDisplay(c);
+    h += `<tr><td>${esc(c.phone_number)}</td><td>${esc(c.lead_name||'—')}</td><td>${esc(c.organization_id||'—')}</td><td>${esc(c.lead_id||'—')}</td><td>${callProjectSummary(c)}</td><td>${propVal(c.property_data,'budget')}</td><td>${propVal(c.property_data,'city')}</td><td>${propVal(c.property_data,'bhk')}</td><td><span class="badge ${oc.badge}">${oc.label}</span></td><td title="Opaque Gemini key slot">${keyLabel}</td><td title="Estimated from transcript">${tokLabel}</td><td title="total tokens ÷ duration minutes">${tpmLabel}</td><td>${durLabel}</td><td>${minsLabel}</td><td>${costLabel}</td><td>${(c.timestamp||'').slice(0,16)}</td>
+      <td>${c.recording_play_url?`<a href="${esc(c.recording_play_url)}" target="_blank" rel="noopener" style="color:var(--accent2)" title="Play recording">REC</a>`:'—'}</td>
+      <td><button class="btn sm" onclick="viewTranscript(${jsa(c.id)})">View</button></td>
+      <td><textarea rows="1" id="notes-${esc(c.id)}" style="min-height:28px;font-size:11px">${esc(c.notes||'')}</textarea> <button class="btn sm" onclick="saveNotes(${jsa(c.id)})">Save</button></td></tr>`;
+  });
+  $('calls-list').innerHTML = h + (rows.length?'</table>':'<p>No calls yet' + (orgId ? ' for this organization.' : '.') + '</p>');
+  $('calls-page-info').textContent = `Page ${callsPage}` + (orgId ? ` · org ${orgId}` : '');
+  $('calls-prev').disabled = callsPage <= 1;
+  $('calls-next').disabled = rows.length < 20;
+}
+window.saveNotes = async (callId) => { await apiPatch(`/api/calls/${callId}/notes`,{notes:$(`notes-${callId}`).value}); toast('Notes saved'); };
+
+// CRM
+async function loadCRM() {
+  const orgId = (typeof getTenantOrgId === 'function' ? getTenantOrgId() : '') || '';
+  if (!orgId) {
+    $('crm-list').innerHTML = '<p>Enter an organization ID to load organization-scoped CRM contacts.</p>';
+    return;
+  }
+  const d = await api(`/api/crm?organization_id=${encodeURIComponent(orgId)}`);
+  const contacts = d.data||[];
+  let h = '<table><tr><th>Phone</th><th>Lead</th><th>Total Calls</th><th>Booked</th><th>Last Call</th><th>Last Outcome</th></tr>';
+  contacts.forEach(c => {
+    h += `<tr style="cursor:pointer" onclick="loadContactDetail(${jsa(c.phone_number)},${jsa(c.organization_id||orgId)},${jsa(c.lead_id||'')})"><td>${esc(c.phone_number)}</td><td>${esc(c.lead_name||'—')}</td><td>${c.total_calls}</td><td>${c.booked}</td><td>${(c.last_call||'').slice(0,16)}</td><td><span class="badge ${esc(c.last_outcome||'unknown')}">${esc(c.last_outcome||'?')}</span></td></tr>`;
+  });
+  $('crm-list').innerHTML = h + (contacts.length?'</table>':'<p>No contacts yet.</p>');
+}
+window.loadContactDetail = async (phone, organizationId, leadId) => {
+  const params = new URLSearchParams({phone, organization_id: organizationId});
+  if (leadId) params.set('lead_id', leadId);
+  const d = await api(`/api/crm/calls?${params.toString()}`);
+  const calls = d.data||[];
+  let h = `<h3 style="color:var(--accent);margin-bottom:8px">${esc(phone)}</h3><table><tr><th>Time</th><th>Call ID</th><th>Project</th><th>Budget</th><th>City</th><th>BHK</th><th>Outcome</th><th>Reason</th><th>Duration</th><th>Notes</th></tr>`;
+  calls.forEach(c => h+=`<tr><td>${(c.timestamp||'').slice(0,16)}</td><td title="${esc(c.id)}">${esc((c.id||'').slice(0,8))}…</td><td>${callProjectSummary(c)}</td><td>${propVal(c.property_data,'budget')}</td><td>${propVal(c.property_data,'city')}</td><td>${propVal(c.property_data,'bhk')}</td><td>${esc(c.outcome)}</td><td>${esc(c.reason||'')}</td><td>${esc(c.duration_seconds)}s</td><td>${esc(c.notes||'')}</td></tr>`);
+  $('crm-detail').innerHTML = h+'</table>';
+  $('crm-detail').classList.remove('hidden');
+};
+
+// Settings
+const SETTING_GROUPS = {
+  livekit: ['LIVEKIT_URL','LIVEKIT_API_KEY','LIVEKIT_API_SECRET'],
+  gemini: ['GOOGLE_API_KEY','GEMINI_MODEL','GEMINI_TTS_VOICE','USE_GEMINI_REALTIME'],
+  vobiz: ['VOBIZ_SIP_DOMAIN','VOBIZ_USERNAME','VOBIZ_PASSWORD','VOBIZ_OUTBOUND_NUMBER','OUTBOUND_TRUNK_ID','DEFAULT_TRANSFER_NUMBER','VOBIZ_AUTH_ID','VOBIZ_AUTH_TOKEN','VOBIZ_RATE_PER_MINUTE'],
+  twilio: ['TWILIO_ACCOUNT_SID','TWILIO_AUTH_TOKEN','TWILIO_FROM_NUMBER'],
+  s3: ['S3_ACCESS_KEY_ID','S3_SECRET_ACCESS_KEY','S3_ENDPOINT_URL','S3_REGION','S3_BUCKET'],
+  calcom: ['CALCOM_API_KEY','CALCOM_EVENT_TYPE_ID','CALCOM_TIMEZONE'],
+};
+
+let envOnlyMode = false;
+
+async function loadSettings() {
+  populateVoiceSelects();
+  settingsCache = await api('/api/settings');
+  envOnlyMode = !!settingsCache.env_only;
+  $('env-only-banner').classList.toggle('hidden', !envOnlyMode);
+  document.querySelectorAll('#tab-settings input, #tab-settings select, #tab-settings button.btn').forEach(el => {
+    if(el.onclick && String(el.getAttribute('onclick')||'').includes('createSIPTrunk')) return;
+    if(el.classList.contains('pw-toggle')) return;
+    el.disabled = envOnlyMode && !el.id?.startsWith('log-');
+  });
+  Object.entries(settingsCache).forEach(([k,v]) => {
+    if(k === 'env_only' || typeof v !== 'object') return;
+    const el = $('s-'+k);
+    if(el && v.value) el.value = v.value;
+    if(el && v.configured && !v.value) el.placeholder = envOnlyMode ? '(configured in Azure)' : '(configured — enter to update)';
+    if(el && envOnlyMode) el.readOnly = true;
+  });
+  renderToolToggles();
+}
+
+function renderToolToggles() {
+  let enabled = [];
+  try { enabled = JSON.parse(settingsCache.ENABLED_TOOLS?.value||'[]'); } catch(e){}
+  $('tool-toggles').innerHTML = ALL_TOOLS.map(t =>
+    `<label class="tool-check"><input type="checkbox" data-tool="${t}" ${envOnlyMode?'disabled':''} ${(!enabled.length||enabled.includes(t))?'checked':''} /> ${t}</label>`
+  ).join('');
+}
+
+async function saveGroup(group) {
+  if(envOnlyMode){ toast('Settings are managed in Azure Portal','err'); return; }
+  const keys = SETTING_GROUPS[group];
+  const settings = {};
+  keys.forEach(k => { const v=$('s-'+k)?.value; if(v) settings[k]=v; });
+  try {
+    await apiPost('/api/settings',{settings});
+    toast(`${group} settings saved`);
+    loadSettings();
+  } catch(e) { toast(e.detail||'Save failed','err'); }
+}
+window.createSIPTrunk = async () => {
+  try {
+    const r = await apiPost('/api/setup/trunk',{});
+    toast(r.message || `Trunk created: ${r.trunk_id}`);
+    if(r.trunk_id) $('s-OUTBOUND_TRUNK_ID').value = r.trunk_id;
+  } catch(e) { toast('Trunk creation failed: '+(e.detail||''),'err'); }
+};
+window.saveToolToggles = async () => {
+  if(envOnlyMode){ toast('Set ENABLED_TOOLS in Azure Portal','err'); return; }
+  const enabled = [...document.querySelectorAll('#tool-toggles input:checked')].map(c=>c.dataset.tool);
+  try {
+    await apiPost('/api/settings',{settings:{ENABLED_TOOLS:JSON.stringify(enabled)}});
+    toast('Tools saved');
+  } catch(e) { toast(e.detail||'Save failed','err'); }
+};
+
+// Phone number pool
+async function loadNumbers() {
+  try {
+    const d = await api('/api/numbers/status');
+    $('num-total').textContent = d.total ?? 0;
+    $('num-free').textContent = d.free ?? 0;
+    $('num-busy').textContent = d.busy ?? 0;
+    $('num-disabled').textContent = d.disabled ?? 0;
+    const rows = d.numbers || [];
+    if (!rows.length) {
+      $('numbers-tbody').innerHTML = '<tr><td colspan="8" style="color:var(--text2)">No numbers yet — click Sync from Vobiz (requires VOBIZ_AUTH_ID / TOKEN).</td></tr>';
+      return;
+    }
+    $('numbers-tbody').innerHTML = rows.map(n => {
+      const st = n.status || '—';
+      const e164 = n.e164 || '';
+      const org = esc(n.organization_id || '');
+      const idSafe = e164.replace(/[^a-zA-Z0-9]/g, '_');
+      return `<tr>
+        <td style="font-family:var(--mono)">${esc(e164||'—')}</td>
+        <td style="min-width:160px">
+          <div style="display:flex;gap:4px;align-items:center">
+            <input id="num-org-${idSafe}" value="${org}" placeholder="shared" style="width:120px;font-size:12px" />
+            <button class="btn sm secondary" onclick="saveNumberOrg(${jsa(e164)})">Save</button>
+          </div>
+        </td>
+        <td><span class="badge ${esc(st)}">${esc(st)}</span></td>
+        <td style="font-family:var(--mono);font-size:11px">${esc((n.current_call_id||'—').slice(0,8))}</td>
+        <td style="font-size:11px">${esc(n.current_room_name||'—')}</td>
+        <td style="font-size:11px">${(n.last_used_at||'—').toString().slice(0,19)}</td>
+        <td style="font-size:11px">${(n.synced_at||'—').toString().slice(0,19)}</td>
+        <td style="font-size:11px">${esc(n.vobiz_status||'—')} ${esc(n.country?('· '+n.country):'')}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    $('numbers-tbody').innerHTML = `<tr><td colspan="8" style="color:var(--danger)">Failed to load: ${esc(e.detail||e.message||e)}</td></tr>`;
+  }
+}
+async function saveNumberOrg(e164) {
+  const idSafe = e164.replace(/[^a-zA-Z0-9]/g, '_');
+  const org = ($('num-org-'+idSafe)?.value || '').trim();
+  try {
+    await apiPatch('/api/numbers', { e164, organization_id: org || null });
+    toast(org ? `Mapped ${e164} → ${org}` : `${e164} set to shared`);
+    loadNumbers();
+  } catch(e) {
+    toast('Save failed: '+(e.detail||e.message||''), 'err');
+  }
+}
+async function syncNumbers() {
+  try {
+    toast('Syncing numbers from Vobiz…');
+    const r = await apiPost('/api/numbers/sync', {});
+    if (r.status === 'skipped') {
+      toast(r.reason || 'Sync skipped (lock held)', 'err');
+    } else {
+      toast(`Synced ${r.seen||0} from Vobiz (+${r.inserted||0} new)`);
+    }
+    loadNumbers();
+  } catch(e) {
+    toast('Sync failed: '+(e.detail||e.message||''), 'err');
+  }
+}
+
+let _numberStatusEs = null;
+let _numberStatusKnown = {};
+
+function startNumberStatusStream() {
+  if (_numberStatusEs) {
+    try { _numberStatusEs.close(); } catch (_) {}
+    _numberStatusEs = null;
+  }
+  const token = getAuthToken();
+  const org = (typeof getTenantOrgId === 'function' ? getTenantOrgId() : '') || '';
+  let url = '/api/numbers/stream?interval_sec=2';
+  if (org) url += '&organization_id=' + encodeURIComponent(org);
+  if (token) url += '&api_key=' + encodeURIComponent(token);
+  try {
+    _numberStatusEs = new EventSource(url);
+  } catch (e) {
+    return;
+  }
+  _numberStatusEs.addEventListener('snapshot', (ev) => {
+    try {
+      const d = JSON.parse(ev.data);
+      _numberStatusKnown = Object.assign({}, d.statuses || {});
+      if (document.querySelector('#tab-numbers.active, #tab-numbers.tab-panel.active') ||
+          ($('tab-numbers') && !$('tab-numbers').classList.contains('hidden') && document.querySelector('[data-tab="numbers"].active'))) {
+        loadNumbers();
+      }
+    } catch (_) {}
+  });
+  _numberStatusEs.addEventListener('number_status', (ev) => {
+    try {
+      const d = JSON.parse(ev.data);
+      const e164 = d.e164 || '';
+      const st = (d.status || '').toLowerCase();
+      const prev = (_numberStatusKnown[e164] || d.previous_status || '').toLowerCase();
+      if (e164 && st) _numberStatusKnown[e164] = st;
+      if (st === 'free' && prev === 'busy') {
+        toast(`${e164} is free now`);
+      }
+      // Refresh Numbers tab + calling-number dropdowns when visible
+      const numbersTab = document.querySelector('button[data-tab="numbers"].active');
+      if (numbersTab) loadNumbers();
+      if (outboundNumbersCache.length) {
+        const row = outboundNumbersCache.find(n => n.e164 === e164);
+        if (row) row.status = st;
+        else if (st !== 'disabled') outboundNumbersCache.push({ e164, status: st });
+        // Refresh open batch/campaign previews if present
+        if (typeof refreshBatchPreview === 'function' && batchContacts && batchContacts.length) {
+          try { refreshBatchPreview(); } catch (_) {}
+        }
+        if (typeof refreshCampPreview === 'function' && campContacts && campContacts.length) {
+          try { refreshCampPreview(); } catch (_) {}
+        }
+      }
+    } catch (_) {}
+  });
+  _numberStatusEs.onerror = () => {
+    // Browser auto-reconnects EventSource; keep quiet
+  };
+}
+
+// Logs
+async function loadLogs() {
+  const level = $('log-level').value;
+  const source = $('log-source').value;
+  let url = '/api/logs?limit=200';
+  if(level) url += '&level='+level;
+  if(source) url += '&source='+source;
+  const rows = await api(url);
+  $('log-view').innerHTML = rows.map(l =>
+    `<div class="log-line ${esc(l.level)}"><span style="color:var(--muted)">${esc((l.timestamp||'').slice(11,19))}</span> [${esc(l.source)}] ${esc(l.message)}${l.detail?' — '+esc(l.detail):''}</div>`
+  ).join('') || '<div class="log-line">No logs.</div>';
+  $('log-view').scrollTop = 0;
+}
+function scheduleLogsRefresh() {
+  if(logsTimer) clearInterval(logsTimer);
+  logsTimer = setInterval(() => { if(!logsPaused) loadLogs(); }, 5000);
+}
+function toggleLogPause() {
+  logsPaused = !logsPaused;
+  $('log-pause-btn').textContent = logsPaused ? 'Resume' : 'Pause';
+}
+async function clearLogs() { if(!confirm('Clear all logs?'))return; await apiDel('/api/logs'); loadLogs(); toast('Logs cleared'); }
+
+// Init
+function init() {
+  populateVoiceSelects();
+  loadTenantContext();
+  loadClientCredentials();
+  loadStats();
+  loadCalls();
+  loadAppointments();
+  loadLogs();
+  loadAgentProfiles();
+  ensureOutboundNumbersLoaded().catch(() => fillScFromNumberSelect());
+  startLiveCallsPoll();
+  startNumberStatusStream();
+  syncParallelSlotLimits();
+  setInterval(loadStats, 10000);
+  setInterval(syncParallelSlotLimits, 30000);
+  scheduleLogsRefresh();
+}
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

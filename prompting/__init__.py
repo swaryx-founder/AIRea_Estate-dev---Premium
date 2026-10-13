@@ -1,0 +1,85 @@
+"""Composable prompt package for the outbound real-estate agent."""
+
+from .builder import (
+    DEFAULT_SYSTEM_PROMPT,
+    MULTI_PROJECT_SYSTEM_PROMPT,
+    PROJECT_SYSTEM_PROMPT,
+    build_prompt,
+    normalize_projects,
+)
+from .crm_projects import (
+    adapt_call_project_payload,
+    coerce_project_details_value,
+    format_crm_project_pitch,
+)
+from .language import (
+    LANGUAGE_RULES,
+    build_silence_failsafe_nudge,
+    detect_midcall_language_request,
+    indian_accent_runtime_reminder,
+    language_mode_banner,
+    language_policy_block,
+    resolve_active_call_language,
+    resolve_call_language,
+    silence_check_lines,
+    silence_restart_line,
+)
+from .speech import (
+    DEFAULT_AGENT_NAME,
+    build_campaign_opening_instructions,
+    build_campaign_opening_line,
+    build_identity_opening,
+    build_permission_intro,
+    build_reconnect_opening,
+    build_voicemail_message,
+    identity_who_phrase,
+    is_missing_lead_name,
+    resolve_agent_name,
+    spoken_lead_name,
+)
+from .templates import (
+    additional_instructions_has_greeting,
+    additional_instructions_has_permission,
+    build_greeting_kickoff_nudge,
+    reconnect_override_block,
+)
+from .talk_track import DISCOVERY_TRACK, PHONE_TURN_RULES, PROJECT_PITCH_TRACK
+
+__all__ = [
+    "adapt_call_project_payload",
+    "additional_instructions_has_greeting",
+    "additional_instructions_has_permission",
+    "build_campaign_opening_instructions",
+    "build_campaign_opening_line",
+    "build_greeting_kickoff_nudge",
+    "build_identity_opening",
+    "build_permission_intro",
+    "build_reconnect_opening",
+    "build_prompt",
+    "build_silence_failsafe_nudge",
+    "build_voicemail_message",
+    "coerce_project_details_value",
+    "DEFAULT_AGENT_NAME",
+    "DEFAULT_SYSTEM_PROMPT",
+    "DISCOVERY_TRACK",
+    "format_crm_project_pitch",
+    "identity_who_phrase",
+    "indian_accent_runtime_reminder",
+    "is_missing_lead_name",
+    "LANGUAGE_RULES",
+    "detect_midcall_language_request",
+    "language_mode_banner",
+    "language_policy_block",
+    "MULTI_PROJECT_SYSTEM_PROMPT",
+    "normalize_projects",
+    "PHONE_TURN_RULES",
+    "PROJECT_PITCH_TRACK",
+    "PROJECT_SYSTEM_PROMPT",
+    "reconnect_override_block",
+    "resolve_active_call_language",
+    "resolve_agent_name",
+    "resolve_call_language",
+    "silence_check_lines",
+    "silence_restart_line",
+    "spoken_lead_name",
+]

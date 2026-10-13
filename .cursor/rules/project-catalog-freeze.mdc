@@ -1,0 +1,38 @@
+---
+description: Project details — call payload is the source of truth; organization_projects is compare-then-updated
+alwaysApply: true
+---
+
+# Project details: payload wins, Supabase is synced (compare-then-update)
+
+## Behaviour (`db.resolve_organization_projects`)
+- **The call payload is the source of truth.** If `/api/call` (or a campaign contact) sends
+  `projectDetails` / per-project notes, those are used for the call.
+- **Supabase is the fallback** when the payload sends only a `project_id` (empty details/notes).
+- **API path (`register_missing=True`) keeps `organization_projects` in sync:**
+  - project not in DB → row created from payload;
+  - payload same as DB (whitespace / JSON key order ignored) → **no write**;
+  - payload different → row updated (`project_details`, `project_name`, `additional_instructions`,
+    `updated_at`) and `PROJECT_UPDATED org=… project=…` logged to `error_logs`;
+  - empty payload never wipes stored details or notes;
+  - update failure is logged (`PROJECT_UPDATE_FAILED`) — the call still uses the payload.
+- **Worker path (`register_missing=False`)** uses payload-first values but **never writes**, and
+  still rejects projects the API never registered.
+- A `project_id` owned by another organization is always rejected (tenant safety).
+- **Campaign runs (`payload_is_fresh=False`)** replay contacts saved in the `campaigns` row at
+  creation time, so their project details may be stale: Supabase wins when it has details, the
+  saved copy only fills gaps / registers new projects, and existing rows are never updated from it.
+  Used by `_run_campaign` and `POST /api/campaigns/{id}/run` via
+  `_prepare_call_work_items(projects_payload_is_fresh=False)`.
+
+## Replaces the old "catalog freeze"
+Previously non-empty catalog rows were never overwritten, so CRM renames/edits (A→B) were ignored
+and the AI kept pitching stale facts. Do not reintroduce "DB wins over payload".
+
+## When diagnosing "wrong project" / "old pitch"
+1. Check what Node sent in the call payload (`POST /api/call payload` in `error_logs`).
+2. Check `error_logs` for `PROJECT_UPDATED` / `PROJECT_UPDATE_FAILED` for that project.
+3. Then check the `organization_projects` row.
+
+## Tests
+`scripts/test_organization_scope.py` (run with pytest).
